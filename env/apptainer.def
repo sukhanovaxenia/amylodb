@@ -1,0 +1,22 @@
+Bootstrap: docker
+From: python:3.11-slim
+
+# Apptainer/Singularity recipe for the lab server (/mnt/disk/xsukhanova).
+# Build:  apptainer build amylodb.sif env/apptainer.def
+# Run:    apptainer run --bind "$PWD":/work amylodb.sif build --config configs/default.yaml
+
+%files
+    pyproject.toml /opt/amylodb/pyproject.toml
+    README.md /opt/amylodb/README.md
+    src /opt/amylodb/src
+
+%post
+    cd /opt/amylodb
+    pip install --no-cache-dir ".[ml]"
+
+%runscript
+    exec amylodb "$@"
+
+%labels
+    Name amylodb
+    License MIT

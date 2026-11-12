@@ -1,0 +1,107 @@
+{
+  "db": "data/mining/amyloid_aggregation.db",
+  "proteins": 690,
+  "papers": 444,
+  "fill_rate": {
+    "reversibility": 0.0275,
+    "aggregate_structure": 0.0768,
+    "functional_class": 0.2391,
+    "assembly_mechanism": 0.0638
+  },
+  "template_echoes": {
+    "reversibility": 2,
+    "aggregate_structure": 13,
+    "functional_class": 4,
+    "assembly_mechanism": 8
+  },
+  "confidence": {
+    "min": 0.45,
+    "median": 0.7,
+    "max": 0.9,
+    "share_ge_0.5": 0.7362
+  },
+  "noise_names": {
+    "count": 65,
+    "share": 0.0942,
+    "examples": [
+      "mn",
+      "tem",
+      "egcg",
+      "kg",
+      "abnormal protein",
+      "tht",
+      "ne",
+      "als",
+      "ftld",
+      "sds",
+      "md",
+      "amyloid protein",
+      "saxs",
+      "dls",
+      "afm"
+    ]
+  },
+  "canonical_links": {
+    "linked": 273,
+    "spurious": 151,
+    "spurious_share": 0.5531,
+    "by_protein": {
+      "transthyretin": {
+        "linked": 28,
+        "spurious": 14
+      },
+      "saa": {
+        "linked": 3,
+        "spurious": 1
+      },
+      "sod1": {
+        "linked": 10,
+        "spurious": 2
+      },
+      "amyloid-beta": {
+        "linked": 87,
+        "spurious": 77
+      },
+      "alpha-synuclein": {
+        "linked": 44,
+        "spurious": 7
+      },
+      "tdp-43": {
+        "linked": 8,
+        "spurious": 3
+      },
+      "lysozyme": {
+        "linked": 1,
+        "spurious": 0
+      },
+      "insulin": {
+        "linked": 58,
+        "spurious": 33
+      },
+      "tau": {
+        "linked": 8,
+        "spurious": 6
+      },
+      "fus": {
+        "linked": 4,
+        "spurious": 1
+      },
+      "hsp70": {
+        "linked": 4,
+        "spurious": 4
+      },
+      "huntingtin": {
+        "linked": 7,
+        "spurious": 2
+      },
+      "iapp": {
+        "linked": 10,
+        "spurious": 0
+      },
+      "prion": {
+        "linked": 1,
+        "spurious": 1
+      }
+    }
+  }
+}

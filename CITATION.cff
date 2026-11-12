@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use amylodb, please cite it as below."
+title: "amylodb: a unified amyloid database reconciling curated sources with literature mining"
+type: software
+authors:
+  - given-names: Xenia
+    family-names: Sukhanova
+    orcid: "https://orcid.org/0000-0001-7022-0832"
+    affiliation: "Laboratory of Amyloid Biology, St. Petersburg State University"
+license: MIT
+version: 0.1.0
+date-released: "2026-11-05"
+keywords:
+  - amyloid
+  - bioinformatics
+  - database
+  - RNP condensates
+  - LLPS

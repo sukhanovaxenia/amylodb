@@ -1,0 +1,41 @@
+id	name	change	old_status	old_uniprot_id	old_uniprot_name	old_match_type	new_status	new_uniprot_id	new_uniprot_name	new_organism	new_match_type	correct	note
+403	heat shock	reidentified	kept	Q9UBY9	Heat shock protein beta-7	run	kept	P0ACG8	Heat shock protein 15	Escherichia coli (strain K12)	run	y	modifier
+169	human beta-secretase	lost	kept	P56817	Beta-secretase 1	run	dropped:no_uniprot_match					y	
+548	GPCR	lost	kept	Q9XIP7	GPCR-type G protein 1	run	dropped:no_uniprot_match					y	
+1019	TATA box binding protein	reidentified	kept	P62380	TATA box-binding protein-like 1	run	kept	P20226	TATA-box-binding protein	Homo sapiens	name	y	
+67	precursor protein immunoglobulin light chain	lost	kept	P0DOX5	Immunoglobulin gamma-1 heavy chain	run	dropped:no_uniprot_match					n	light chain 
+92	presenilin	lost	kept	P49768	Presenilin-1	run	dropped:no_uniprot_match					y	
+1636	NELF	lost	kept	Q8WX92	Negative elongation factor B	run	dropped:short_form_fallback_uncorroborated		NMDA receptor synaptonuclear signaling and neuronal migration factor	Homo sapiens	gene	y	
+781	von Hippel-Lindau protein	lost	kept	Q6RSH7	von Hippel-Lindau-like protein	run	dropped:no_uniprot_match					y	
+118	collagen	lost	kept	Q02388	Collagen alpha-1(VII) chain	run	dropped:no_uniprot_match					y	
+457	gamma-crystallin	lost	kept	P07315	Gamma-crystallin C	run	dropped:no_uniprot_match					y	
+901	chaplin	lost	kept	Q9KYG7	Chaplin-F	run	dropped:no_uniprot_match					y	
+72	laminin	lost	kept	P07942	Laminin subunit beta-1	run	dropped:no_uniprot_match					y	
+732	YAP	lost	kept	Q19404	Yes-associated protein homolog 1	run	dropped:no_uniprot_match					y	
+292	kappa-casein	reidentified	kept	P07498	Kappa-casein	name	kept	P02668	Kappa-casein	Bos taurus	name	y	
+51	immunoglobulin	lost	kept	P0DOX5	Immunoglobulin gamma-1 heavy chain	run	dropped:no_uniprot_match					y	
+110	aspartic	reidentified	kept	G5EEI4	Aspartic protease 1	run	kept	J9VS02	Major aspartyl peptidase 1	Cryptococcus neoformans (strain H99 / ATCC 208821 / CBS 10515 / FGSC 9487)	name	y	not full 
+611	glycogen synthase kinase 3	lost	kept	P49840	Glycogen synthase kinase-3 alpha	run	dropped:no_uniprot_match					y	
+601	transthyretin-like	lost	kept	G5ED35	Transthyretin-like protein 52	run	dropped:no_uniprot_match					n	not full
+83	cathepsin	lost	kept	P43235	Cathepsin K	run	dropped:no_uniprot_match					n	not full
+306	syntaxin	lost	kept	O15400	Syntaxin-7	run	dropped:no_uniprot_match					n	not full
+112	caspase	lost	kept	P55212	Caspase-6	run	dropped:no_uniprot_match					n	not full
+821	Von-Hippel Lindau protein	lost	kept	Q6RSH7	von Hippel-Lindau-like protein	run	dropped:no_uniprot_match					n	duplicate
+602	human semenogelin I	lost	kept	Q02383	Semenogelin-2	run	dropped:no_uniprot_match					n	2
+74	angiotensin converting enzyme	reidentified	kept	Q9BYF1	Angiotensin-converting enzyme 2	run	kept	P12821	Angiotensin-converting enzyme	Homo sapiens	name	n	not full
+842	bFg	lost	kept	P02676	Fibrinogen beta chain	run	dropped:no_uniprot_match					y	
+143	human muscle acylphosphatase	lost	kept	P14621	Acylphosphatase-2	run	dropped:no_uniprot_match					n	not full
+297	form amyloid	lost	kept	P51693	Amyloid beta precursor like protein 1	run	dropped:no_uniprot_match					n	
+999	heat-shock proteins	lost	kept	Q9UBY9	Heat shock protein beta-7	run	dropped:no_uniprot_match					n	not full
+995	PDZK3	gained	dropped:no_uniprot_match		PDZ domain-containing protein 2	gene	kept	O15018	PDZ domain-containing protein 2	Homo sapiens	gene	y	
+1601	arginine deiminase	lost	kept	Q9ULC6	Protein-arginine deiminase type-1	run	dropped:no_uniprot_match					n	not full
+1400	cyclin	lost	kept	Q8N1B3	Cyclin-Q	run	dropped:no_uniprot_match					n	not full
+894	PSM	reidentified	kept	A9JX06	Phenol-soluble modulin alpha 2 peptide	run	kept	P0C802	Phenol-soluble modulin alpha 3 peptide	Staphylococcus aureus (strain Mu3 / ATCC 700698)	run	n	not full
+1327	PTB	lost	kept	Q9UKA9	Polypyrimidine tract-binding protein 2	run	dropped:no_uniprot_match					n	not full
+1787	vascular endothelial growth factor	lost	kept	P49767	Vascular endothelial growth factor C	run	dropped:no_uniprot_match					n	not full
+1708	Drosha	gained	dropped:no_uniprot_match		Ribonuclease 3	gene	kept	Q9NRR4	Ribonuclease 3	Homo sapiens	gene	n	
+295	lipase	lost	kept	Q5VXI9	Lipase member N	run	dropped:no_uniprot_match					n	not full
+64	immunoglobulin binding protein	lost	kept	P78318	Immunoglobulin-binding protein 1	run	dropped:no_uniprot_match					n	not full
+831	TSPO	reidentified	kept	Q5TGU0	Translocator protein 2	run	kept	P30536	Translocator protein	Homo sapiens	name	n	not full
+152	synaptophysin	reidentified	kept	Q16563	Synaptophysin-like protein 1	run	kept	P08247	Synaptophysin	Homo sapiens	name	n	not full
+345	actin	lost	kept	P63261	Actin, cytoplasmic 2	run	dropped:no_uniprot_match					n	not full

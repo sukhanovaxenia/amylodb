@@ -1,0 +1,31 @@
+# amylodb build configuration.
+#
+# Fill in the curated source paths for your machine. Relative paths are resolved
+# from the directory you run the command in. The literature-mining output
+# (produced separately by `amylodb.mining`) is fed in via `mined`.
+
+sources:
+  # Curated amyloid databases (any subset; missing files are skipped with a warning)
+  waltzdb: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/waltzdb.csv
+  crossbeta: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/crossbetadb.json
+  amyload: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/AmyLoad.csv
+  amyloid_atlas: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/AmyloidAtlas.tsv
+  amyloid_explorer: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/AmyloidExplorer.tsv
+  amypro: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/amypro.txt
+  amylograph: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/amylograph.txt
+  amylobase: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/amylobase.txt
+  cpad_peptides: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/CPAD/aggregating_peptides.xlsx
+  cpad_structures: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/data/curated/CPAD/amyloid_structure.xlsx
+
+# JSON list of literature-mined extraction dicts (optional).
+# Produce it on a machine with PubMed/UniProt/model access via amylodb.mining,
+# then point to it here or pass --mined on the command line.
+mined: null
+
+output_dir: /Users/kseniasuhanova/iCloud/Documents/Documents_icloud/Lab_amyloids/Projects/Dissertation/amylodb/build/amylodb_out
+
+options:
+  # Keep prion-like-domain RBPs (FUS, hnRNPA1, TDP-43, ...). Set true only to
+  # drop transmissible mammalian prion pathology (PrP^Sc and relatives).
+  exclude_transmissible_prion: false
+  compute_features: true

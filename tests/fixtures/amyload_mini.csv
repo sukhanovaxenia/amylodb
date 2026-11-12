@@ -1,0 +1,5 @@
+ID,Protein Name,Fragment Name,Sequence,Amyloidogenic
+AMY1,Tau,K19,PGGGKVQIVYKPV,Yes
+AMY2,Tau,K19d,PGGGKVYKPV,No
+AMY3,Insulin,B-chain,LVEALYL,Yes
+AMY4,FUS prion-like domain,PLD1,SYGQQS,Yes

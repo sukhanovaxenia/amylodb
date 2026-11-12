@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Data and build outputs (large, regenerated; keep out of git)
+data/
+*_out/
+*.sqlite
+*.tsv.gz
+sequence_cache.json
+
+# Models / weights (downloaded on the host, never committed)
+models/
+*.safetensors
+*.bin
+
+# OS
+.DS_Store

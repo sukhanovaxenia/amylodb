@@ -1,0 +1,111 @@
+{
+  "db": "data/mining_models/amyloid_aggregation.db",
+  "proteins": 232,
+  "papers": 492,
+  "fill_rate": {
+    "reversibility": 0.1336,
+    "aggregate_structure": 0.4138,
+    "functional_class": 0.694,
+    "assembly_mechanism": 0.0,
+    "undergoes_llps": 0.0517
+  },
+  "template_echoes": {
+    "reversibility": 0,
+    "aggregate_structure": 0,
+    "functional_class": 0,
+    "assembly_mechanism": 0,
+    "undergoes_llps": 0
+  },
+  "confidence": {
+    "min": 0.7068,
+    "median": 0.9196,
+    "max": 1.0,
+    "share_ge_0.5": 1.0
+  },
+  "noise_names": {
+    "count": 0,
+    "share": 0.0,
+    "examples": []
+  },
+  "canonical_links": {
+    "linked": 165,
+    "spurious": 0,
+    "spurious_share": 0.0,
+    "by_protein": {
+      "amyloid-beta": {
+        "linked": 32,
+        "spurious": 0
+      },
+      "alpha-synuclein": {
+        "linked": 24,
+        "spurious": 0
+      },
+      "transthyretin": {
+        "linked": 9,
+        "spurious": 0
+      },
+      "insulin": {
+        "linked": 19,
+        "spurious": 0
+      },
+      "tau": {
+        "linked": 9,
+        "spurious": 0
+      },
+      "lysozyme": {
+        "linked": 22,
+        "spurious": 0
+      },
+      "tdp-43": {
+        "linked": 5,
+        "spurious": 0
+      },
+      "aβ40": {
+        "linked": 6,
+        "spurious": 0
+      },
+      "aβ42": {
+        "linked": 7,
+        "spurious": 0
+      },
+      "prion": {
+        "linked": 4,
+        "spurious": 0
+      },
+      "sod1": {
+        "linked": 9,
+        "spurious": 0
+      },
+      "huntingtin": {
+        "linked": 3,
+        "spurious": 0
+      },
+      "iapp": {
+        "linked": 11,
+        "spurious": 0
+      },
+      "fus": {
+        "linked": 2,
+        "spurious": 0
+      },
+      "saa": {
+        "linked": 3,
+        "spurious": 0
+      }
+    }
+  },
+  "triage": {
+    "scored": 492,
+    "median": 0.0004,
+    "share_ge_0.5": 0.0
+  },
+  "paper_claims": {
+    "rows": 461,
+    "reversibility": {
+      "unknown": 394,
+      "irreversible": 42,
+      "reversible": 25
+    },
+    "llps_yes": 12
+  }
+}
