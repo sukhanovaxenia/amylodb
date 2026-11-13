@@ -1,192 +1,37 @@
-amylodb: unified amyloid database with model-based literature mining
+mining: identity and role rules v3b-v3e, evidence tier for aggregators
 
-Initial repository for amylodb, the dissertation's amyloid database. It
-reconciles two previously divergent branches of Amyloid-DB into one versioned,
-ML-ready dataset and adds a model-based mining stage.
+Rules added after the lookup-diff reviews 2-4 and the v3c/v3d re-validations
+(docs/changes_from_source.md, sections 9.6-9.11). Re-validated corpus v3e:
+1870 proteins = 1455 kept + 415 dropped; 579 aggregators (curated 67, text
+227, model_only 285); 697 condensate candidates (component 479, regulator 218).
 
-Sources
-  * curated line (merged_version): nine source parsers + feature pipeline,
-    vendored under src/amylodb/curated/
-  * mining line (llm-sukhanova): PubMed / NER / LLM extraction stack, vendored
-    under src/amylodb/mining/ with imports rewired
+  * a species word written before the name selects that organism's entry
+    ("chicken cystatin"); no entry of an unnamed organism for a family run
+    match or in a human-material abstract; Roman member marks kept in the
+    qualifier-free variant; completed member names go through the aliases;
+    TrEMBL names read from submission names
+  * compare_lookup.py --exclude skips proteins reviewed on earlier sheets
+  * an unnamed organism is refused only when the name designates a human
+    family that was rejected (unique names such as melittin or RepA are
+    accepted again); a rejected human family opens the search in other
+    organisms; member completion through "(ABBR)" and digit+Greek marks;
+    aliases COL4A1, RBP4, FGA, GSK3B, PLAT, LRP1, SOD1 and the pattern
+    "histone deacetylase N" -> HDACN
+  * after a rejected human family, member-adding run matches are refused in
+    every organism; UniProt requests retry six times (backoff to 60 s) and a
+    single 400/404 once; letter-numeral member marks ("C-II"); aliases for
+    VHL spellings, SERPINA3, RB1
+  * any paper's aggregator vote makes an aggregator also with
+    --role-thresholds (the thresholds choose only the modifier subtype);
+    curated synonyms match with hyphens read as spaces; lesion names (PHF,
+    tangles, Lewy bodies, aggresomes) are aggregation terms
+  * aggregation_evidence for kept aggregators: curated | text (a sentence
+    states self-aggregation) | model_only; stored, exported, reported and
+    shown on review sheets; condensate candidates from regulator votes carry
+    the subtype "regulator"; alias ch-TOG -> CKAP5
+  * the tier reaches the build: AmyloidRecord.aggregation_evidence, last
+    column of records.tsv, graph nodes, reconcile_stats; strongest tier wins
+    on merge; model_only (predicted) records vote with half weight;
+    condensate_candidates.tsv gets condensate_role (component | regulator)
 
-Unified database (tested)
-  * schema.AmyloidRecord: provenance, record level, prion class, one ordered
-    evidence tier; level-aware dedup key (protein vs region never collide)
-  * provenance: tier scale, curated->tier mapping, word-boundary prion
-    classification (prion-like domains kept, transmissible prions isolated)
-  * reconcile: tier-weighted conflict resolution; merges per-paper
-    reversibility votes, LLPS evidence, reported methods
-  * features_matrix: deterministic 444-wide matrix (full 400 dipeptides)
-  * graph_export: hub-and-spoke region/protein graph for graded classification
-  * mining/adapter + scripts/export_mined.py: mining SQLite -> mined.json ->
-    unified records, with protein-level reversibility resolved from per-paper
-    decisions
-
-Model-based mining (--mode models)
-  * OpenBioNER-v2 typed NER (zshot), PDBEurope protein-structure NER for
-    experimental methods and evidence tier, mDeBERTa-v3 zero-shot NLI for
-    aggregation / reversibility / structure / functional class / LLPS,
-    BiomedBERT-Amyloid relevance triage (annotate-only by default); LLM only
-    for fields NLI leaves undecided
-  * per-paper evidence table protein_claims; additive schema migration so
-    existing mining databases open unchanged
-  * scripts/fetch_models.py (download + revision lockfile, offline-capable),
-    scripts/check_models.py (validation on three abstracts with fixed
-    expected answers), scripts/audit_mining.py (quality metrics, baseline
-    comparison)
-
-Corrections to the source code (measured; see docs/changes_from_source.md)
-  * reconcile two schemas instead of merging them mechanically
-  * keep prion-like-domain RBPs across query, prefilter, prompt and parsing
-  * fixed-width feature matrix (the TSV export dropped most dipeptides)
-  * recover Amylobase records (header whitespace; located regions valid)
-  * normaliser no longer matches names inside synonyms (55.3 % of canonical
-    protein-paper links were spurious); mention gate before linking
-  * pattern confidence no longer credits absent keys (floor of 0.45)
-  * LLM categorical answers validated (template echoes rejected)
-  * noise names (methods, diseases, reagents, generic phrases) filtered
-  * UniProt lookup falls back to reviewed non-human entries
-  * UniProt hits accepted only on a real name/gene correspondence
-    (full-text hits for generic words rejected); candidate names
-    cleaned of punctuation; amino acids, nucleic acids and generic
-    nouns filtered; NLI gained assembly-mechanism claims, ensembled
-    phrasings, an anaphora-aware premise window and a disaggregase
-    discriminator (a chaperone is not called an aggregator); structure
-    NER chunked by tokens to respect the 512-position limit
-  * mined names re-validated: name cleaning, non-protein lists,
-    Schwartz-Hearst abbreviation expansion, UniProt match types
-    (gene / name / qualifier run), corroboration of short symbols,
-    aggregator / modifier role (chaperones exported to modifiers.tsv),
-    status column instead of deletion; scripts/revalidate_mining.py
-    applies the same rules to an existing database without re-mining;
-    audit gains a seeded manual-review sample with Wilson-interval
-    precision; BiomedBERT triage off by default
-  * UniProt resolution after the first live re-validation: Swiss-Prot only,
-    gene synonyms, alternative and processed-product names, qualifier-
-    stripped retries, species words select the species, gene-only matches
-    in other organisms require the organism in the abstract, gated
-    short-form fallback; residues (Glu8), complexes and source-qualified
-    class phrases are noise; reversed abbreviation definitions; review
-    sample one row per accession plus a dropped-row sheet;
-    --score-review no longer needs --db
-  * protein roles: NLI claims for inhibitor, regulator and co-deposit
-    besides chaperone; decide_role assigns aggregator or a modifier
-    subtype; revalidate_mining.py --rescore-claims re-decides roles from
-    the stored abstracts and drops proteins with no role claim;
-    role_subtype in the DB, export, modifiers.tsv and review sheets
-  * identity fixes from the second review: no gene match through
-    qualifier-stripped queries, runs need a specific word and the
-    recommended name, construct words stripped, CDR loops as noise,
-    curated canonicals bypass the gates
-  * role calibration: per-abstract NLI role scores stored; scripts/
-    calibrate_roles.py fits the aggregator/modifier thresholds to review
-    marks with a leave-one-out estimate; decide_protein_role applies the
-    fitted thresholds to the mean/max over a protein's abstracts, fed back
-    through revalidate_mining.py --role-thresholds; review sample split
-    into aggregators and modifiers; third-review identity fixes (UniProt
-    short names as symbols, digit symbols pass the short gate, filament
-    heads noise, ...factor names as regulators, truncated names completed
-    from the abstract)
-  * lexical modifier override: a chaperone-class noun (chaperone,
-    sequestrase, disaggregase, holdase, foldase) beside the protein in a
-    mention sentence flips a borderline NLI 'aggregator' to a modifier,
-    regardless of the model (catches metallothionein-3, Btn2 that the
-    UniProt keyword misses); nouns only, no verb attribution
-
-Corpus expansion (step 2):
-  * settings.TARGETED_TERM_GROUPS -- bacterial, fungal and plant functional
-    amyloids, prion-like and low-complexity domains, RNP condensates and
-    stress granules, structural evidence, material assembly -- each
-    searched on its own budget instead of competing in one broad query
-  * PubMedSearcher.year_bins / search_corpus slice every group by
-    publication year (two-year bins from 1998) so the per-query cap applies
-    per bin, de-duplicating PMIDs in discovery order
-  * PubMedSearcher.count and scripts/plan_corpus.py report hit counts per
-    group and bin without fetching, with --estimate-overlap to measure how
-    much the groups duplicate each other
-  * pipeline gains --corpus-plan, --groups, --bin-years, --per-bin,
-    --max-total; the single-query path is unchanged without --corpus-plan
-
-Robustness: a failing model no longer ends a run
-  * OpenBioNER is called per ~1000-character chunk inside a guard, so the
-    zshot 0.0.11 SMXM span-decoder KeyError(-1) costs that chunk only;
-    failures counted in ner_chunks_failed, spans offset back onto the input
-  * control codes and zero-width marks are replaced by spaces before
-    chunking -- length-preserving, so spans still index the input and a tab
-    cannot merge two words
-  * the pipeline wraps each article's extraction, counts extraction_failed
-    and writes failed_pmids to pipeline_stats.json; re-running without
-    --force retries only those papers
-
-Fix: roles are no longer decided while mining
-  * acting on the broad modifier claims per paper with fixed thresholds made
-    1220 of 1870 proteins modifiers on the expanded corpus and suppressed
-    forms_aggregates for 1202, amyloid-beta included; decide() again
-    withholds the aggregator call only for a dominant disaggregation claim
-  * assign_role(from_claims=False) in the mining pipeline: deterministic
-    modifier evidence only (UniProt keyword, chaperone-class noun)
-  * role_scores stored at mining time, so thresholds can be calibrated from
-    an existing database without re-mining
-  * revalidate_mining.py repairs forms_aggregates for every re-decided role
-    and reports forms_aggregates_repaired
-  * _print_statistics prints per-gate drops, failed papers, skipped chunks
-
-Review of the expanded corpus: identity and scope
-  * UniProt selection: primary gene or recommended name beats a synonym; a
-    synonym shared by several entries is taken only when the abstract
-    corroborates one; the organism an abstract names beats a human synonym;
-    a human gene hit in a non-human-only abstract needs corroboration
-  * corroboration ignores generic words and participles
-  * family / enzyme-class names, named complexes, chemical heads and
-    sample descriptions are noise; size and segment labels map to the gene
-    the literature means (p62 -> SQSTM1, PHF6 -> MAPT), others need
-    corroboration; Abeta / APP name variants map to the canonical
-  * re-validation routes literature without aggregation terms to a
-    condensate role (condensate_candidates.tsv) or off_topic, requires an
-    aggregator to share a sentence with an aggregation term, keeps
-    proteins on NLI abstention, and decides roles from claims only through
-    re-scoring
-  * chaperone-noun override: apposition, copula or possessed activity
-    only, never against an aggregator majority (had flipped Sup35)
-  * review sheets carry error_type; calibration uses role errors only
-  * roles from any paper: per-paper votes give the primary role (aggregator
-    when any paper supports self-aggregation) and modifier_roles, so a
-    protein can be an amyloid record and a modifier (gelsolin); a paper that
-    applies a chaperone noun to the protein votes chaperone
-  * condensate scope: stress granules, P-bodies, nucleolus and other
-    membraneless organelles; condensate_evidence lists aggregators and
-    modifiers named beside a condensate term in condensate_candidates.tsv
-  * fix: re-validation overwrites role fields even when empty (mining-time
-    "regulator" subtypes had survived on 795 proteins)
-  * review sheets: three evidence sentences from different papers and the
-    number of supporting papers
-
-Second review of the expanded corpus: identity rules and regulators
-  * UniProt: a run match adding a paralog mark is kept only when it is the
-    sole such entry of its organism (family names unresolved); runs adding
-    "like" / "homolog" rejected; hits ranked name > primary gene > run >
-    synonym before selection; aliases for names UniProt naming cannot reach
-  * an abstract naming one model organism whose entry is not among the hits:
-    that organism is searched alone, Swiss-Prot then TrEMBL (fly Drosha ->
-    Q7KNF1), never the human ortholog; hyphenated gene search for
-    letters+digits names
-  * a family head written with one member mark in the text is completed
-    ("syntaxin 6"); final Roman numerals searched in Arabic form; strains of
-    one species count as one organism in the family test; protease and
-    heat-shock classes are noise; aliases apply after a leading "human"
-  * UniProt requests retry with backoff; persistent failure raises
-    UniProtUnavailable, is not cached, and gives dropped:lookup_error
-  * mention test accepts spelling variants (Greek letters, hyphens,
-    parentheses, plurals); "curli" an aggregation term, "polar granules" and
-    "germ plasm" condensate terms; farm-animal cues without the BSA reagent
-  * regulator votes recorded but no longer make a modifier or a dual role;
-    regulator-only proteins go to condensate candidates or
-    dropped:regulator_only
-  * export gives every row of one accession the same role, pooled modifier
-    roles and condensate evidence
-  * scripts/compare_lookup.py: population diff of the lookup with a review
-    sample, without the NLI models
-
-Tooling: CLI (python -m amylodb build), YAML config, Docker + Apptainer, conda
-environment, pytest suite (257 tests), docs (running, mining, changes), MIT.
+Tests: 285 passed.

@@ -85,7 +85,7 @@ def offline_uniprot(monkeypatch):
     ("human serum albumin", "P02768", "name"),       # qualifier-stripped query
     ("calmodulin", "P0DP23", "run"),                 # single word vs "Calmodulin-1"
     ("glucagon", "P01275", "name"),                  # processed product of Pro-glucagon
-    ("superoxide dismutase-1", "P00441", "name"),    # alternative name
+    ("superoxide dismutase-1", "P00441", "known"),   # curated: "superoxide dismutase 1" with the hyphen read as a space
 ])
 def test_recovered_human_proteins(name, acc, mt):
     hit = UniProtClient.lookup(name, name, context="")

@@ -121,6 +121,13 @@ def run(input_files: Dict[str, str],
         result.stats["dual_role"] = sum((m.get("protein_role") == "aggregator") for m in mods)
         result.stats["condensate_candidates"] = len(conds)
 
+    # support of the mined aggregator records: curated | text | model_only (predicted)
+    from collections import Counter as _Counter
+    tiers = _Counter(r.aggregation_evidence for r in result.consensus
+                     if getattr(r, "aggregation_evidence", ""))
+    if tiers:
+        result.stats["mined_aggregation_evidence"] = dict(tiers)
+
     with open(os.path.join(output_dir, "reconcile_stats.json"), "w", encoding="utf-8") as fh:
         json.dump(result.stats, fh, indent=2)
 
@@ -134,10 +141,12 @@ def _write_modifiers_tsv(modifiers: List[Dict], path: str) -> None:
     ``primary_role`` says whether the protein is also an amyloid record
     (aggregator) -- a dual-role protein appears in both outputs.
     ``modifier_roles`` lists every modifier subtype some paper supports;
-    ``condensate_evidence`` marks a condensate term beside the protein.
+    ``condensate_evidence`` marks a condensate term beside the protein;
+    ``condensate_role`` is "regulator" for candidates that reached the list
+    through regulator votes only, "component" for the other condensate rows.
     """
     import csv
-    cols = ["protein_name", "primary_role", "modifier_roles", "condensate_evidence", "uniprot_id",
+    cols = ["protein_name", "primary_role", "modifier_roles", "condensate_evidence", "condensate_role", "uniprot_id",
             "gene_name", "organism", "uniprot_name", "co_mentioned_aggregators",
             "disassembly_cofactors", "source_pmids"]
     with open(path, "w", newline="", encoding="utf-8") as fh:
@@ -145,11 +154,13 @@ def _write_modifiers_tsv(modifiers: List[Dict], path: str) -> None:
         w.writerow(cols)
         for m in modifiers:
             roles = list(m.get("modifier_roles") or [])
-            if not roles and m.get("role_subtype"):
+            if not roles and m.get("role_subtype") and m.get("protein_role") == "modifier":
                 roles = [m["role_subtype"]]
+            crole = ("" if m.get("protein_role") != "condensate" else
+                     "regulator" if m.get("role_subtype") == "regulator" else "component")
             w.writerow([m.get("protein_name", ""), m.get("protein_role", "") or "",
                         ";".join(roles), int(bool(m.get("condensate_evidence"))
-                                             or m.get("protein_role") == "condensate"),
+                                             or m.get("protein_role") == "condensate"), crole,
                         m.get("uniprot_id", ""), m.get("gene_name", ""),
                         m.get("organism", ""), m.get("uniprot_name", ""),
                         ";".join(m.get("co_mentioned_aggregators", []) or []),
@@ -167,7 +178,7 @@ _RECORD_COLUMNS = [
     "reversibility", "assembly_mechanism", "is_functional", "is_pathological",
     "extraction_confidence", "evidence_weight", "pmid", "source_pmids",
     "undergoes_llps", "reported_methods", "reported_method_tier",
-    "reversibility_votes", "claim_scores",
+    "reversibility_votes", "claim_scores", "aggregation_evidence",
 ]
 
 
@@ -190,5 +201,6 @@ def _write_records_tsv(records: List[AmyloidRecord], path: str) -> None:
                 ";".join(r.reported_methods), r.reported_method_tier,
                 json.dumps(r.reversibility_votes, sort_keys=True) if r.reversibility_votes else "",
                 json.dumps(r.claim_scores, sort_keys=True) if r.claim_scores else "",
+                getattr(r, "aggregation_evidence", ""),
             ])
     logger.info("Wrote %d records to %s", len(records), path)

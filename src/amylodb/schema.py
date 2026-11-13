@@ -69,6 +69,11 @@ class AmyloidRecord(AmyloidEntry):
     reversibility_votes: Dict[str, int] = field(default_factory=dict)  # per-paper decisions
     reported_methods: List[str] = field(default_factory=list)
     reported_method_tier: int = -1         # strongest method the source papers report (not verified)
+    # Mined protein records only: how the aggregator role is supported --
+    # "curated" (built-in list), "text" (a sentence says the protein itself
+    # aggregates) or "model_only" (the NLI vote alone: a predicted amyloid,
+    # kept and marked, about 1 in 4 confirmed on review). "" elsewhere.
+    aggregation_evidence: str = ""
 
     def __post_init__(self) -> None:
         # Keep the inherited scalar evidence_weight aligned with the unified tier

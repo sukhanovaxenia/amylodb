@@ -114,9 +114,14 @@ class ProteinNormalizer:
         cleaned = clean_name(name) or ' '.join(name.strip().split())
         lookup = cleaned.lower()
         
-        # Check direct match
+        # Check direct match, then with hyphens read as spaces
+        # ("microtubule associated protein tau" is "microtubule-associated protein tau")
         if lookup in cls._SYNONYM_TO_CANONICAL:
             return cls._SYNONYM_TO_CANONICAL[lookup]
+        spaced = lookup.replace('-', ' ')
+        for syn, canonical in cls._SYNONYM_TO_CANONICAL.items():
+            if syn.replace('-', ' ') == spaced:
+                return canonical
 
         # Partial matching, forward direction only (a known synonym inside a
         # longer name). The previous bidirectional substring rule also matched a
@@ -237,7 +242,11 @@ class UniProtClient:
         toks = (protein_name or "").split()
         if len(toks) >= 2 and toks[0].lower() == "protein" and len(toks[1]) >= 3:
             out.append((" ".join(toks[1:]), "unprefixed"))       # "protein tau" -> "tau"
-        core = [t for t in toks if cls._norm_token(t) not in cls._QUALIFIERS]
+        # a Roman numeral after the head is a member mark, not a qualifier:
+        # "human semenogelin I" -> "semenogelin I", not the family "semenogelin"
+        marks = {"i", "ii", "iii", "iv", "v", "vi", "vii", "viii"}
+        core = [t for k, t in enumerate(toks)
+                if cls._norm_token(t) not in cls._QUALIFIERS or (k > 0 and t.lower() in marks)]
         if core and len(core) < len(toks) and len(" ".join(core)) >= 3:
             out.append((" ".join(core), "core"))
         # a final Roman numeral as UniProt writes it: "semenogelin I" -> "Semenogelin-1"
@@ -264,7 +273,7 @@ class UniProtClient:
         def _shorts(entry):
             return [x.get("value") for x in (entry or {}).get("shortNames", []) or [] if x.get("value")]
 
-        rec = desc.get("recommendedName") or {}
+        rec = desc.get("recommendedName") or (desc.get("submissionNames") or [{}])[0] or {}
         # short names ("PAC", "HSP27") behave like symbols, so they join the gene
         # list and fall under the same gene-only gates
         names, shorts = [_full(rec)], _shorts(rec)
@@ -327,8 +336,8 @@ class UniProtClient:
             out.append(f"{m.group(1)}-{m.group(2)}")
         return out
 
-    RETRIES = 4
-    BACKOFF = 2.0          # seconds, doubled per attempt (max 30)
+    RETRIES = 6
+    BACKOFF = 2.0          # seconds, doubled per attempt (max 60): rides out a ~1-min outage
 
     @classmethod
     def _get(cls, url: str, params: Dict) -> Dict:
@@ -346,13 +355,16 @@ class UniProtClient:
                 r = requests.get(url, params=params, timeout=20)
                 if r.status_code == 200:
                     return r.json()
-                if r.status_code in (400, 404):            # malformed query: genuinely nothing
+                if r.status_code in (400, 404) and attempt >= 1:
+                    # a malformed query answers 400 every time: genuinely nothing.
+                    # A single 400/404 is retried once -- during the outage of the
+                    # fourth diff CTLA4 came back empty between 22 failed lookups
                     return {"results": []}
                 last = f"HTTP {r.status_code}"
             except Exception as e:                       # timeout, connection reset, bad JSON
                 last = repr(e)
             if attempt < cls.RETRIES - 1:
-                time.sleep(min(30.0, cls.BACKOFF * 2 ** attempt))
+                time.sleep(min(60.0, cls.BACKOFF * 2 ** attempt))
         raise UniProtUnavailable(f"UniProt query failed after {cls.RETRIES} attempts: {last}")
 
     @classmethod
@@ -416,11 +428,11 @@ class UniProtClient:
         url = f"{cls.BASE_URL}/uniprotkb/search"
         for reviewed, stage in (("true", "taxon_reviewed"), ("false", "unreviewed_named")):
             for q, kind in cls._query_variants(protein_name):
-                if kind == "core":
-                    continue
-                genes = " OR ".join(f'gene_exact:"{g}"' for g in cls._gene_alternatives(q))
+                # within one organism a qualifier-free name is safe by name, not by gene
+                genes = "" if kind == "core" else " OR " + " OR ".join(
+                    f'gene_exact:"{g}"' for g in cls._gene_alternatives(q))
                 data = cls._get(url, {
-                    "query": f'(protein_name:"{q}" OR {genes}) AND (organism_id:{taxon}) AND (reviewed:{reviewed})',
+                    "query": f'(protein_name:"{q}"{genes}) AND (organism_id:{taxon}) AND (reviewed:{reviewed})',
                     "format": "json", "size": 25,
                     "fields": "accession,gene_names,gene_synonym,protein_name,organism_name,keyword",
                 })
@@ -428,7 +440,8 @@ class UniProtClient:
                 for result in data.get("results", []):
                     hit = cls._parse_hit(result)
                     mt = cls._match_hit(q, ProteinNormalizer.normalize(q), hit)
-                    if mt == "name" or (mt == "gene" and cls._sym(hit.get("gene_name")) == cls._sym(q)):
+                    if mt == "name" or (mt == "gene" and kind != "core"
+                                        and cls._sym(hit.get("gene_name")) == cls._sym(q)):
                         hit.update(match_type=mt, lookup_stage=stage, query_variant=q, added=[])
                         found.append(hit)
                 if found:
@@ -461,7 +474,7 @@ class UniProtClient:
         On the second review sheets run matches were right in 3 of 19 cases.
         """
         from collections import Counter
-        marked = lambda h: h["match_type"] == "run" and any(t not in cls._NEUTRAL_ADDED for t in h.get("added", []))
+        marked = cls._marked_run
         # grouped by species, not by organism string: PSM alpha-2 and alpha-3 of two
         # S. aureus strains are still two paralogs
         species = lambda h: " ".join((h.get("organism") or "").split()[:2])
@@ -479,6 +492,11 @@ class UniProtClient:
                 continue
             out.append(h)
         return out
+
+    @classmethod
+    def _marked_run(cls, h: Dict) -> bool:
+        """A run match whose name adds a paralog mark to the query."""
+        return h["match_type"] == "run" and any(t not in cls._NEUTRAL_ADDED for t in h.get("added", []))
 
     _KIND_RANK = {"name": 0, "primary": 1, "run": 2, "synonym": 3}
 
@@ -519,7 +537,12 @@ class UniProtClient:
             return meta
 
         written = surface or protein_name
-        hits = cls._filter_runs(list(cls.candidates(protein_name)))
+        raw = list(cls.candidates(protein_name))
+        hits = cls._filter_runs(raw)
+        # the name designates a human family whose members were all rejected
+        # ("methionine aminopeptidase": METAP1/2; "alpha-crystallin": CRYAA/B)
+        human_family = any(h["lookup_stage"] == "human" for h in raw) and \
+            not any(h["lookup_stage"] == "human" for h in hits)
         if cls._species_in(protein_name):
             # "equine skeletal myoglobin" is the horse protein, not the human one
             same = [h for h in hits if organism_mentioned(h["organism"], protein_name)]
@@ -530,9 +553,19 @@ class UniProtClient:
         ctx = context or ""
         qs = {cls._sym(protein_name), cls._sym(written)}
         human = [h for h in hits if h["lookup_stage"] == "human"]
-        if context and (names_nonhuman_organism(ctx) or
+        # other organisms are searched when the abstract names one, when the human
+        # match is a synonym only, or when the human family was rejected (the
+        # Pyrococcus methionine aminopeptidase is a single protein)
+        if context and (names_nonhuman_organism(ctx) or human_family or
                         (human and all(cls._kind(h, qs) == "synonym" for h in human))):
             hits = cls._filter_runs(list(cls.candidates(protein_name, exhaustive=True)))
+        if human_family:
+            # a family name stays a family name in every organism: the 25 hits of
+            # the wider search hold one member of some species by chance
+            # ("apolipoprotein" -> mouse ApoC-I, "laminin" -> rat beta-2,
+            # "integrin" -> mouse alpha-E). Exact names still count (Pyrococcus
+            # methionine aminopeptidase).
+            hits = [h for h in hits if not cls._marked_run(h)]
         hits = cls._ranked(hits, qs)
         human = [h for h in hits if h["lookup_stage"] == "human"]
         other = [h for h in hits if h["lookup_stage"] != "human"]
@@ -547,6 +580,15 @@ class UniProtClient:
             # needs corroboration: CalY of Bacillus cereus is not calcyon (CALY),
             # and Drosha in a fly paper is the fly protein, not human DROSHA
             return not (only_other and h["match_type"] == "gene") or corroborated(h["uniprot_name"], ctx)
+        # 0. the text writes a species word before the name ("chicken cystatin",
+        #    "bovine carbonic anhydrase II"): that organism's own entry
+        if context:
+            from amylodb.mining.validation import species_prefix_taxon
+            taxon = species_prefix_taxon(written, ctx) or species_prefix_taxon(protein_name, ctx)
+            if taxon:
+                hit = cls.in_taxon(protein_name, taxon)
+                if hit:
+                    return cls._result(hit, True)
         # 1. the abstract names only that organism: Rim4 / Pat1 in a yeast paper
         if only_other and named:
             return cls._result(named[0], True)
@@ -579,6 +621,13 @@ class UniProtClient:
                 return cls._result(corr[0], in_text(corr[0]))
         # 5. other organisms: a gene-symbol match needs its organism in the abstract
         #    (urea -> ureA, Glu8 -> rice GLU8); with no context, a gene-like form
+        #    An entry of an organism the abstract does not name is a guess: never for
+        #    a family member picked by a run (stefin -> bovine stefin C, lactate
+        #    dehydrogenase -> zebrafish D-LDH), never for a name that designates a
+        #    human family (lens alpha-crystallin -> M. tuberculosis Hsp16.3,
+        #    JNK-interacting protein -> the worm JIP). A unique name without human
+        #    entries stays acceptable (melittin, kassinin, RepA): rejecting every
+        #    unnamed organism in abstracts that mention humans lost 40 of them.
         chosen = None
         for hit in other:
             it = in_text(hit)
@@ -589,7 +638,10 @@ class UniProtClient:
                     continue
             if it or context is None:
                 return cls._result(hit, it)
-            chosen = chosen or (hit, it)                 # name match, organism unnamed
+            if cls._marked_run(hit):
+                continue
+            if not human_family:
+                chosen = chosen or (hit, it)             # name match, organism unnamed
         return cls._result(*chosen) if chosen else None
 
     @staticmethod
@@ -763,10 +815,12 @@ class UniProtClient:
                     protein['protein_name'] = ProteinNormalizer.normalize(longer)
         if not metadata and context:
             # a family head the text writes with one member mark only ("syntaxin 6")
-            from amylodb.mining.validation import paralog_extension
-            member = paralog_extension(protein.get('surface_form') or name, context)
+            from amylodb.mining.validation import alias_gene, paralog_extension, strip_leading_qualifiers
+            written = protein.get('surface_form') or name
+            member = paralog_extension(written, context) or paralog_extension(strip_leading_qualifiers(written), context)
             if member:
-                metadata = cls.lookup(ProteinNormalizer.normalize(member), member, context=context)
+                target = alias_gene(member.lower()) or member
+                metadata = cls.lookup(ProteinNormalizer.normalize(target), member, context=context)
                 if metadata:
                     protein['protein_name'] = ProteinNormalizer.normalize(member)
         return metadata

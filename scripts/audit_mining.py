@@ -197,6 +197,7 @@ def review_sample(db_path: str, n: int = 50, seed: int = 7, which: str = "kept")
                     "organism": p.get("resolved_organism") or p.get("organism") or "",
                     "role": p.get("protein_role") or "", "subtype": p.get("role_subtype") or "",
                     "role_votes": p.get("role_votes") or "", "match_type": p.get("match_type") or "",
+                    "aggregation_evidence": p.get("aggregation_evidence") or "",
                     "status": p.get("status") or "",
                     "papers": cur.execute("SELECT count(*) FROM protein_papers WHERE protein_id=?", (p["id"],)).fetchone()[0],
                     "modifier_roles": ";".join(json.loads(p.get("modifier_roles") or "[]")),

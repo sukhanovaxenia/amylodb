@@ -60,7 +60,8 @@ def _resolve(lookup: Callable, pd: Dict, name: str, surface: str, text: str,
     a no_uniprot_match drop.
     """
     from amylodb.mining.ner.normalizer import ProteinNormalizer
-    from amylodb.mining.validation import extend_truncated, looks_like_noise, paralog_extension
+    from amylodb.mining.validation import (alias_gene, extend_truncated, looks_like_noise,
+                                           paralog_extension, strip_leading_qualifiers)
     meta = _call(lookup, name, surface, text)
     if not meta and pd.get("resolved_from"):
         # same fallback as enrich_proteins: the short form may resolve,
@@ -79,9 +80,13 @@ def _resolve(lookup: Callable, pd: Dict, name: str, surface: str, text: str,
                 report["expanded"].append({"id": pid, "from": surface, "to": longer})
     if not meta:
         # a family head the text writes with one member mark only ("syntaxin 6")
-        member = paralog_extension(surface, text) or paralog_extension(name, text)
+        bare = strip_leading_qualifiers(surface)
+        member = (paralog_extension(surface, text) or paralog_extension(bare, text)
+                  or paralog_extension(name, text))
         if member:
-            meta = _call(lookup, ProteinNormalizer.normalize(member), member, text)
+            # the completed member may be an alias ("arginine deiminase 4" -> PADI4)
+            target = alias_gene(member.lower()) or member
+            meta = _call(lookup, ProteinNormalizer.normalize(target), member, text)
             if meta:
                 name = ProteinNormalizer.normalize(member)
                 report["expanded"].append({"id": pid, "from": surface, "to": member})
@@ -96,10 +101,11 @@ def rescore_role(rescorer, texts: List[str], names: List[str], label: str,
 
     Each abstract that genuinely mentions the protein gives a premise (the
     mention sentences plus the following ones) scored over the NLI role claims.
-    With ``thresholds`` (from scripts/calibrate_roles.py) the decision is made
-    once, on the chosen statistic of the scores over the protein's abstracts,
-    against the calibrated cut-offs. Without them it falls back to a per-abstract
-    vote with `decide_role`, where ties go to 'aggregator'. At most
+    Each abstract votes with `decide_role`. Any aggregator vote makes the
+    protein an aggregator. Otherwise, with ``thresholds`` (from
+    scripts/calibrate_roles.py) the modifier subtype is decided once on the
+    chosen statistic of the scores over the abstracts; without them it is the
+    most voted subtype. At most
     ``max_papers`` abstracts are scored (seeded sample).
 
     Returns (role, subtype, votes): role is 'aggregator', a 'modifier', or None
@@ -135,6 +141,14 @@ def rescore_role(rescorer, texts: List[str], names: List[str], label: str,
         return None, None, dict(votes)
     mods = {k: v for k, v in votes.items() if k not in ("aggregator", "abstain")}
     top_mod = max(mods.items(), key=lambda kv: kv[1])[0] if mods else None
+    # One paper suffices for the aggregator role, in both modes: a protein is an
+    # aggregator if any of its papers supports self-aggregation (the curator's
+    # rule for dual-role proteins). The calibrated thresholds score the mean over
+    # all papers, so used alone they turned 190 such proteins into modifiers,
+    # condensate candidates or regulator-only drops (apoE, cystatin C,
+    # cytochrome c, ubiquitin) in the v3c run.
+    if votes.get("aggregator", 0):
+        return "aggregator", None, dict(votes)
     if thresholds:
         if not rows:                               # every paper names it a chaperone
             return "modifier", top_mod, dict(votes)
@@ -143,13 +157,9 @@ def rescore_role(rescorer, texts: List[str], names: List[str], label: str,
         stats = {k: agg([r.get(k, 0.0) for r in rows]) for k in ROLE_KEYS}
         role, subtype = decide_protein_role(stats, thresholds)
         return role, subtype, dict(votes)
-    # One paper suffices for each role (a protein may be both: gelsolin forms the
-    # AGel amyloid in some papers and inhibits Abeta fibrillisation in others).
-    # The primary role is aggregator when any paper supports self-aggregation;
-    # the modifier subtypes any paper supports are returned in the votes and
-    # stored as modifier_roles by the caller.
-    if votes.get("aggregator", 0):
-        return "aggregator", None, dict(votes)
+    # Without thresholds the modifier subtype is the most voted one; the
+    # subtypes any paper supports are returned in the votes and stored as
+    # modifier_roles by the caller (gelsolin: AGel amyloid and Abeta inhibitor).
     if top_mod:
         return "modifier", top_mod, dict(votes)
     return None, None, dict(votes)
@@ -171,7 +181,7 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
     from amylodb.mining.ner.normalizer import ProteinNormalizer, UniProtClient, UniProtUnavailable
     from amylodb.mining.resolution import (assign_role, gate_resolved, lexical_modifier,
                                             prepare_candidates)
-    from amylodb.mining.validation import relevance
+    from amylodb.mining.validation import relevance, self_aggregation_evidence
     _SENT = re.compile(r"(?<=[.!?])\s+")
     from amylodb.mining.validation import extend_truncated, find_abbreviations
 
@@ -188,6 +198,7 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
     report = {"db": db_path, "out": out_path, "proteins": len(proteins),
               "status": Counter(), "dropped": [], "expanded": [], "reidentified": [],
               "modifiers": [], "role_changes": [], "role_subtypes": Counter(),
+              "aggregation_evidence": Counter(), "condensate_subtypes": Counter(),
               "forms_aggregates_repaired": 0, "condensates": 0}
 
     for p in proteins:
@@ -312,13 +323,27 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
                             top = max(sorted(mod_roles), key=lambda k: (votes or {}).get(k, 0))
                             pd["role_subtype"] = top
                         elif rel["cond_mention"] or rel["cond_abstract"]:
+                            # kept as a condensate candidate, marked as a regulator of
+                            # the condensate (12 of 20 v3d candidates were regulators
+                            # or off-topic: KRAS, ROCK1 "regulate stress granules"),
+                            # so condensatedb can tell them from components
                             role, pd["protein_role"] = "condensate", "condensate"
-                            pd["role_subtype"] = None
+                            pd["role_subtype"] = "regulator"
                         else:
                             status = f"dropped:{sorted(unverified)[0] if unverified else 'regulator'}_only"
                     # condensate evidence for condensatedb, whatever the primary role:
                     # TDP-43 and FUS are aggregators and stress-granule proteins
                     annotations["condensate_evidence"] = int(rel["cond_mention"] or role == "condensate")
+                    # How an aggregator is supported: a sentence stating that the
+                    # protein itself aggregates ("text"), or the model's vote alone
+                    # ("model_only": right in 12 of 46 reviewed cases, against 37
+                    # of 49 for "text"). Kept either way; the tier is for filtering
+                    # and for stratified review.
+                    if status == "kept" and role == "aggregator":
+                        annotations["aggregation_evidence"] = (
+                            "text" if self_aggregation_evidence(texts, names) else "model_only")
+                if curated and status == "kept":
+                    annotations["aggregation_evidence"] = "curated"
                 annotations["modifier_roles"] = json.dumps(sorted(mod_roles)) if mod_roles else None
                 if status == "kept" and role != old_role:
                     report["role_changes"].append({"id": pid, "name": name, "from": old_role,
@@ -333,7 +358,12 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
                     cur.execute("UPDATE proteins SET forms_aggregates = ? WHERE id = ?",
                                 (1 if role == "aggregator" else 0, pid))
                     report["forms_aggregates_repaired"] += 1
-                report["role_subtypes"][pd.get("role_subtype") or role] += 1
+                report["role_subtypes"][role if role in ("aggregator", "condensate") else
+                                        (pd.get("role_subtype") or role)] += 1
+                if role == "aggregator":
+                    report["aggregation_evidence"][annotations.get("aggregation_evidence") or "none"] += 1
+                if role == "condensate":
+                    report["condensate_subtypes"][pd.get("role_subtype") or "component"] += 1
                 if role == "condensate":
                     report["condensates"] += 1
                 if role == "modifier":
@@ -363,7 +393,8 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
         # empty: skipping None left the mining-time subtypes in place, so 425
         # condensate candidates and 370 aggregators of the v3 base still carried
         # "regulator". Other annotations only fill gaps.
-        decided = ("protein_role", "role_subtype", "modifier_roles", "condensate_evidence")
+        decided = ("protein_role", "role_subtype", "modifier_roles", "condensate_evidence", "aggregation_evidence")
+        annotations.setdefault("aggregation_evidence", None)
         if status != "kept":
             annotations.update({k: None for k in decided})
         cols = {k: v for k, v in annotations.items() if v not in (None, "") or k in decided}
@@ -378,6 +409,8 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
     con.close()
     report["status"] = dict(report["status"])
     report["role_subtypes"] = dict(report["role_subtypes"])
+    report["aggregation_evidence"] = dict(report["aggregation_evidence"])
+    report["condensate_subtypes"] = dict(report["condensate_subtypes"])
     return report
 
 
@@ -415,6 +448,7 @@ def main() -> int:
           f"modifiers {len(rep['modifiers'])}")
     print(f"roles: {rep['role_subtypes']}; changed {len(rep['role_changes'])}; "
           f"routed to condensate candidates {rep['condensates']}")
+    print(f"aggregator evidence: {rep['aggregation_evidence']}; condensate candidates: {rep['condensate_subtypes']}")
     reasons = defaultdict(list)
     for d in rep["dropped"]:
         reasons[d["reason"]].append(d["surface"])

@@ -25,7 +25,7 @@ import re
 
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from .validation import (ALIAS_TO_GENE, clean_name, corroborated, find_abbreviations,
+from .validation import (ALIAS_TO_GENE, alias_gene, strip_leading_qualifiers, clean_name, corroborated, find_abbreviations,
                          genuine_mention, is_short_symbol, is_size_label, looks_like_noise,
                          resolve_abbreviation)
 
@@ -101,11 +101,13 @@ def prepare_candidates(proteins: Iterable[Dict], text: str,
         # "PHF6" = the tau hexapeptide) is searched as that gene; any other
         # size label is ambiguous and must be corroborated (gate_resolved)
         label = (pd["protein_name"] or "").strip().lower()
-        # "human beta-secretase" is the alias without its species word
-        label = re.sub(r"^human\s+", "", label) if re.sub(r"^human\s+", "", label) in ALIAS_TO_GENE else label
-        if label in ALIAS_TO_GENE:
+        # "human beta-secretase", "mutant recombinant amelogenin": the alias
+        # without its leading qualifiers
+        bare = strip_leading_qualifiers(label).lower()
+        gene = alias_gene(label) or alias_gene(bare)
+        if gene:
             pd.setdefault("resolved_from", surface)
-            pd["protein_name"] = ALIAS_TO_GENE[label]
+            pd["protein_name"] = gene
         elif is_size_label(label):
             pd["size_label"] = True
         kept.append(pd)

@@ -194,6 +194,15 @@ python scripts/revalidate_mining.py \
   `dropped:<reason>` (`noise`, `noise_abbreviation`, `no_uniprot_match`,
   `short_symbol_uncorroborated`, `off_topic`, `no_aggregation_mention`,
   `regulator_only`, `lookup_error`), so every decision can be inspected.
+* `aggregation_evidence` says how an aggregator is supported: `curated`
+  (built-in list), `text` (a sentence states that the protein itself
+  aggregates; about 3 in 4 right on review) or `model_only` (the NLI vote
+  alone, a predicted amyloid; about 1 in 4 confirmed). All three stay in the
+  database; the tier is the last column of `records.tsv` and a field of the
+  graph nodes, and a `model_only` record votes with half weight. Exclude
+  `model_only` when a set of confirmed amyloids is needed (training labels).
+* Condensate candidates with the subtype `regulator` reached the list through
+  regulator votes only (they regulate a condensate rather than belong to it).
 * `dropped:lookup_error` means UniProt could not be reached after four
   attempts with backoff, not that the name has no entry. Re-running the
   re-validation retries these proteins.
@@ -236,13 +245,24 @@ re-validation without `--rescore-claims`):
 
 ```bash
 python scripts/compare_lookup.py \
-    --db data/mining_v3/amyloid_aggregation.revalidated.db --out lookup_diff
+    --db data/mining_v3/amyloid_aggregation.revalidated.db --out lookup_diff4 \
+    --exclude lookup_diff_review_checked.tsv lookup_diff2_review_checked.tsv lookup_diff3_review_checked.tsv
 ```
 
 It prints how many proteins keep their accession, change it, lose it or gain
 one, by match type, and writes `lookup_diff.tsv` (every change) and
-`lookup_diff_review.tsv` (40 changes, `correct` column: y = the new identity
-is right). A rule is kept when the marked changes are mostly right.
+`lookup_diff_review.tsv` (40 changes to mark). A rule is kept when the marked
+changes are mostly right.
+
+Each row compares the database (`old_*`: what the last re-validation stored)
+with the current code (`new_*`). `change` is `reidentified` (another entry),
+`lost` (kept before, dropped now; `new_status` says why), or `gained` (dropped
+before, kept now). The comparison is always with the database, not with the
+previous diff, so a change stays listed until the database is re-validated;
+pass the sheets already marked to `--exclude` so the sample shows new rows
+only. Mark `correct` as y when the new state is right: the right entry for a
+kept protein, or a justified drop (generic class, several members in the text,
+not a protein).
 
 Then export, build and audit the re-validated copy:
 

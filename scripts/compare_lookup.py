@@ -6,9 +6,13 @@ each protein is resolved again (same name preparation, fallbacks and gates as
 scripts/revalidate_mining.py, no NLI) and compared with its stored accession.
 
 Consumes: a re-validated mining SQLite (status, uniprot_name columns present).
-Emits:    <out>.tsv        one row per protein whose resolution changed;
+Emits:    <out>.tsv        one row per protein whose resolution changed, compared
+                           with the DB (not with an earlier diff): a protein stays
+                           in it until the DB itself is re-validated;
           <out>_review.tsv a seeded sample of the changes with an empty
-                           `correct` column (y = the new identity is right);
+                           `correct` column (y = the new state is right: the right
+                           entry, or a right drop), without the ids of the
+                           sheets given to --exclude;
           a summary on stdout: unchanged / reidentified / lost / gained, by
           match type, and lookup errors.
 Invariant: the database is opened read-only; nothing is written to it.
@@ -111,6 +115,8 @@ def main() -> int:
     ap.add_argument("--out", default="lookup_diff", help="output prefix")
     ap.add_argument("--sample", type=int, default=40, help="changed rows in the review sheet")
     ap.add_argument("--limit", type=int, default=0, help="first N proteins only (smoke test)")
+    ap.add_argument("--exclude", nargs="*", default=[],
+                    help="earlier review sheets: their ids are left out of the new sample")
     args = ap.parse_args()
 
     rows = compare(args.db, args.limit)
@@ -118,7 +124,12 @@ def main() -> int:
     fields = list(rows[0]) if rows else []
     with open(f"{args.out}.tsv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields, delimiter="\t"); w.writeheader(); w.writerows(changed)
-    sample = random.Random(7).sample(changed, min(args.sample, len(changed)))
+    seen = set()
+    for path in args.exclude:
+        with open(path, encoding="utf-8") as fh:
+            seen |= {r["id"] for r in csv.DictReader(fh, delimiter="\t") if r.get("id")}
+    fresh = [r for r in changed if str(r["id"]) not in seen]
+    sample = random.Random(7).sample(fresh, min(args.sample, len(fresh)))
     with open(f"{args.out}_review.tsv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields + ["correct", "note"], delimiter="\t"); w.writeheader()
         w.writerows({**r, "correct": "", "note": ""} for r in sample)
@@ -129,6 +140,8 @@ def main() -> int:
     print("lost, new status:", dict(Counter(r["new_status"] for r in rows if r["change"] == "lost")))
     print("gained, by new match type:", dict(Counter(r["new_match_type"] for r in rows if r["change"] == "gained")))
     print("lookup errors:", sum(r["new_status"] == "dropped:lookup_error" for r in rows))
+    if seen:
+        print(f"already reviewed and left out of the sample: {len(changed) - len(fresh)}")
     print(f"-> {args.out}.tsv ({len(changed)} changed), {args.out}_review.tsv ({len(sample)} to mark)")
     return 0
 

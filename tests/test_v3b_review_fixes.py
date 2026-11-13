@@ -37,6 +37,14 @@ HUMAN = {
     "akt1": [_entry("P31749", "RAC-alpha serine/threonine-protein kinase", "AKT1")],
     "caly": [_entry("Q9NYX4", "Neuron-specific vesicular protein calcyon", "CALY")],
     "drosha": [_entry("Q9NRR4", "Ribonuclease 3", "DROSHA")],
+    "stefin": [_entry("P01040", "Cystatin-A", "CSTA"), _entry("P04080", "Cystatin-B", "CSTB")],
+    "alpha-crystallin": [_entry("P02489", "Alpha-crystallin A chain", "CRYAA"),
+                         _entry("P02511", "Alpha-crystallin B chain", "CRYAB")],
+    "apolipoprotein": [_entry("P02647", "Apolipoprotein A-I", "APOA1"),
+                       _entry("P02654", "Apolipoprotein C-I", "APOC1")],
+    "methionine aminopeptidase": [_entry("P53582", "Methionine aminopeptidase 1", "METAP1"),
+                                  _entry("P50579", "Methionine aminopeptidase 2", "METAP2")],
+    "cystatin": [_entry("P01034", "Cystatin-C", "CST3"), _entry("Q15828", "Cystatin-M", "CST6")],
 }
 ANY = {
     "carbonic anhydrase": [_entry("P00921", "Carbonic anhydrase 2", "CA2", "Bos taurus")],
@@ -44,6 +52,12 @@ ANY = {
     "pdk-1": [_entry("Q9Y1J3", "3-phosphoinositide-dependent protein kinase 1", "pdk-1", "Caenorhabditis elegans")],
     "perfringolysin": [_entry("P0C2E9", "Perfringolysin O", "pfo", "Clostridium perfringens")],
     "caly": [],
+    "stefin": [_entry("P35478", "Stefin-C", "", "Bos taurus")],
+    "alpha-crystallin": [_entry("P9WMK1", "Alpha-crystallin", "hspX", "Mycobacterium tuberculosis")],
+    "melittin": [_entry("P01501", "Melittin", "", "Apis mellifera")],
+    "apolipoprotein": [_entry("P34928", "Apolipoprotein C-I", "Apoc1", "Mus musculus")],
+    "methionine aminopeptidase": [_entry("P56218", "Methionine aminopeptidase", "map", "Pyrococcus furiosus")],
+    "cystatin": [_entry("P01035", "Cystatin-C", "CST3", "Bos taurus")],
 }
 
 
@@ -55,6 +69,10 @@ class _Resp:
         return {"results": self._results}
 
 
+TAXON_REVIEWED = {  # (name, taxon) -> Swiss-Prot entries of one organism
+    ("cystatin", 9031): [_entry("P01038", "Cystatin", "", "Gallus gallus")],
+}
+
 TREMBL = {  # (name, taxon) -> unreviewed entries
     ("drosha", 7227): [_entry("Q7KNF1", "Ribonuclease III", "drosha", "Drosophila melanogaster"),
                        _entry("Q960Y4", "Ribonuclease III", "drosha", "Drosophila melanogaster")],
@@ -65,7 +83,8 @@ def _fake_get(url, params=None, timeout=None):
     query = params["query"]
     q = re.search(r'protein_name:"(.*?)"', query).group(1).lower()
     if "reviewed:true" in query and "organism_id:9606" not in query and "organism_id:" in query:
-        return _Resp([])                                     # no Swiss-Prot entry in that taxon
+        taxon = int(re.search(r"organism_id:(\d+)", query).group(1))
+        return _Resp(TAXON_REVIEWED.get((q, taxon), []))
     if "reviewed:false" in query:
         taxon = int(re.search(r"organism_id:(\d+)", query).group(1))
         return _Resp(TREMBL.get((q, taxon), []))
@@ -265,3 +284,173 @@ def test_one_accession_gets_one_role_on_export():
     assert {r["protein_role"] for r in tdp} == {"aggregator"}
     assert all(r["modifier_roles"] == ["associated"] and r["condensate_evidence"] for r in tdp)
     assert rows[3]["protein_role"] == "modifier" and rows[3]["role_subtype"] == "chaperone"
+
+
+# --- second lookup-diff review ------------------------------------------------
+
+def test_family_member_of_an_unnamed_organism_is_not_taken():
+    # human stefin B paper: bovine stefin C is the only "stefin" of cattle, still a guess
+    ctx = "Amyloid-fibril formation of human stefin B mutants in EPM1."
+    assert UniProtClient.lookup("stefin", "stefin", context=ctx) is None
+
+
+def test_species_word_before_the_name_selects_that_organism():
+    from amylodb.mining.validation import species_prefix_taxon
+    ctx = "Amyloidogenic chicken cystatin forms fibrils; chicken cystatin I66Q."
+    assert species_prefix_taxon("cystatin", ctx) == 9031
+    assert species_prefix_taxon("cystatin", "human cystatin C and chicken cystatin") is None
+    assert UniProtClient.lookup("cystatin", "cystatin", context=ctx)["uniprot_id"] == "P01038"
+
+
+def test_roman_member_mark_survives_in_core_variant():
+    qs = [q for q, _ in UniProtClient._query_variants("human semenogelin i")]
+    assert "semenogelin i" in qs and "semenogelin" not in qs
+
+
+def test_trembl_name_is_read_from_submission_names():
+    e = {"primaryAccession": "Q9VFT4", "organism": {"scientificName": "Drosophila melanogaster"},
+         "proteinDescription": {"submissionNames": [{"fullName": {"value": "Rasputin"}}]},
+         "genes": [{"geneName": {"value": "rin"}}], "keywords": []}
+    assert UniProtClient._parse_hit(e)["uniprot_name"] == "Rasputin"
+
+
+def test_alias_ignores_leading_qualifiers():
+    from amylodb.mining.resolution import prepare_candidates
+    kept, _ = prepare_candidates([{"protein_name": "mutant recombinant amelogenin",
+                                   "surface_form": "mutant recombinant amelogenin"}], "amelogenin", {})
+    assert kept[0]["protein_name"] == "AMELX"
+
+
+def test_new_class_phrases_are_noise():
+    from amylodb.mining.validation import looks_like_noise
+    assert looks_like_noise("lactate dehydrogenase") and looks_like_noise("glutathione s-transferase")
+
+
+# --- third lookup-diff review -------------------------------------------------
+
+def test_unique_name_of_an_unnamed_organism_is_kept_in_a_human_paper():
+    ctx = "Melittin forms amyloid-like fibrils and lyses human erythrocytes."
+    assert UniProtClient.lookup("melittin", "melittin", context=ctx)["uniprot_id"] == "P01501"
+
+
+def test_human_family_name_does_not_fall_back_to_an_unnamed_organism():
+    ctx = "Alpha-crystallin, a small heat-shock protein of the lens, prevents Abeta fibril growth."
+    assert UniProtClient.lookup("alpha-crystallin", "alpha-crystallin", context=ctx) is None
+
+
+def test_rejected_human_family_opens_the_search_in_other_organisms():
+    ctx = "Amyloid-like fibrils of methionine aminopeptidase from the hyperthermophile Pyrococcus furiosus."
+    hit = UniProtClient.lookup("methionine aminopeptidase", "methionine aminopeptidase", context=ctx)
+    assert hit["uniprot_id"] == "P56218"
+
+
+def test_pattern_alias_and_abbreviation_before_member_mark():
+    from amylodb.mining.validation import alias_gene, paralog_extension
+    assert alias_gene("histone deacetylase 6") == "HDAC6"
+    member = paralog_extension("glycogen synthase kinase", "glycogen synthase kinase (GSK)-3beta raises tau")
+    assert member == "glycogen synthase kinase 3beta" and alias_gene(member) == "GSK3B"
+
+
+def test_family_name_stays_unresolved_in_a_named_organism():
+    # the wider search holds one mouse apolipoprotein by chance: still a family
+    ctx = "Apolipoproteins co-localise with amyloid in mouse corneal deposits."
+    assert UniProtClient.lookup("apolipoprotein", "apolipoprotein", context=ctx) is None
+
+
+def test_single_400_is_retried_once(monkeypatch):
+    import amylodb.mining.ner.normalizer as nz
+    codes = iter([404, 200])
+
+    def flaky(url, params=None, timeout=None):
+        code = next(codes)
+        return _Resp(HUMAN["synphilin"] if code == 200 else [], code=code)
+    monkeypatch.setattr(nz.requests, "get", flaky)
+    assert UniProtClient.lookup("synphilin", "synphilin", context="")["uniprot_id"] == "Q9Y4G2"
+
+
+def test_letter_roman_member_mark():
+    from amylodb.mining.validation import paralog_extension
+    assert paralog_extension("apolipoprotein", "human apolipoprotein C-II amyloid fibrils") == "apolipoprotein c-ii"
+
+
+# --- v3c re-validation ----------------------------------------------------------
+
+def test_hyphen_variant_of_a_curated_name_is_curated():
+    from amylodb.mining.ner.normalizer import ProteinNormalizer
+    assert ProteinNormalizer.normalize("microtubule associated protein tau") == "tau"
+
+
+def test_lesion_names_count_as_aggregation():
+    from amylodb.mining.validation import relevance
+    s = "Neurofibrillary tangles are made of paired helical filaments containing hyperphosphorylated tau."
+    assert relevance([s], ["tau"])["agg_mention"]
+
+
+def test_any_aggregator_vote_wins_over_thresholds():
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location(
+        "rv", os.path.join(os.path.dirname(__file__), "..", "scripts", "revalidate_mining.py"))
+    rv = importlib.util.module_from_spec(spec); spec.loader.exec_module(rv)
+
+    class Scorer:   # paper 1: aggregation; paper 2: strong regulator
+        def score(self, premise, label, keys=None):
+            agg = "fibrils" in premise
+            return {"aggregates": 0.9 if agg else 0.05, "disaggregase": 0.0, "inhibits": 0.0,
+                    "regulates": 0.1 if agg else 0.95, "co_deposits": 0.0}
+    th = {"statistic": "mean", "aggregates": 0.8, "disaggregase": 0.9, "inhibits": 0.9,
+          "regulates": 0.4, "co_deposits": 0.9, "margin": 0.0}
+    role, sub, votes = rv.rescore_role(Scorer(), ["ApoE forms fibrils.", "ApoE regulates clearance of Abeta."],
+                                       ["ApoE"], "ApoE", thresholds=th)
+    assert role == "aggregator" and votes.get("aggregator") == 1
+
+
+# --- v3d review ---------------------------------------------------------------
+
+@pytest.mark.parametrize("text,name,expected", [
+    ("Here, we take the yeast pyruvate kinase Cdc19 as an example; Cdc19 forms amyloid-like aggregates.", "Cdc19", True),
+    ("Domain interactions direct misfolding and amyloid formation of yeast phosphoglycerate kinase.",
+     "phosphoglycerate kinase", True),
+    ("Copper ions trigger disassembly of neurokinin B functional amyloid.", "neurokinin B", True),
+    ("The fibril forming propensity of the Chaplin E peptide was assessed.", "Chaplin E peptide", True),
+    ("Amyloid formation of KT5-6 was accelerated by fibulin-4.", "fibulin-4", False),
+    ("GKN1 prevented amyloid aggregation of Abeta.", "GKN1", False),
+    ("Anti-amyloidogenic property of human gastrokine 1.", "gastrokine 1", False),
+    ("Abca1 increases Abeta deposition in PDAPP mice.", "Abca1", False),
+    ("Multifaceted anti-amyloidogenic and pro-amyloidogenic effects of C-reactive protein.", "C-reactive protein", False),
+])
+def test_self_aggregation_evidence(text, name, expected):
+    from amylodb.mining.validation import self_aggregation_evidence
+    assert self_aggregation_evidence([text], [name]) is expected
+
+
+def test_letters_digits_alias_ch_tog():
+    from amylodb.mining.validation import alias_gene
+    assert alias_gene("ch-tog") == "CKAP5"
+
+
+def test_evidence_tier_reaches_records_and_merges_to_the_strongest():
+    from amylodb.mining.adapter import mined_to_record
+    from amylodb.provenance import EvidenceTier, tier_weight
+    base = {"protein_name": "X", "uniprot_id": "P1", "forms_aggregates": True}
+    weak = mined_to_record({**base, "aggregation_evidence": "model_only"})
+    strong = mined_to_record({**base, "aggregation_evidence": "text"})
+    assert weak.aggregation_evidence == "model_only"
+    assert weak.evidence_weight == tier_weight(EvidenceTier.TEXT_MINED) / 2
+    assert strong.evidence_weight == tier_weight(EvidenceTier.TEXT_MINED)
+    from amylodb import reconcile as rc
+    merge = next(getattr(rc, n) for n in dir(rc) if n.startswith("_merge") or n == "merge_group")
+    assert merge([weak, strong]).aggregation_evidence == "text"
+
+
+def test_export_keeps_condensate_regulator_and_strongest_tier():
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location(
+        "ex", os.path.join(os.path.dirname(__file__), "..", "scripts", "export_mined.py"))
+    ex = importlib.util.module_from_spec(spec); spec.loader.exec_module(ex)
+    rows = [{"uniprot_id": "A", "protein_role": "condensate", "role_subtype": "regulator", "modifier_roles": []},
+            {"uniprot_id": "A", "protein_role": "condensate", "role_subtype": "regulator", "modifier_roles": []},
+            {"uniprot_id": "B", "protein_role": "aggregator", "aggregation_evidence": "model_only", "modifier_roles": []},
+            {"uniprot_id": "B", "protein_role": "aggregator", "aggregation_evidence": "text", "modifier_roles": []}]
+    ex.unify_roles(rows)
+    assert rows[0]["role_subtype"] == "regulator"
+    assert rows[2]["aggregation_evidence"] == rows[3]["aggregation_evidence"] == "text"

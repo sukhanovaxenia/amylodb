@@ -510,3 +510,165 @@ paper on both yeast and human cells).
   for "heat shock"); a truncated name is no longer extended into a class phrase.
 * **Aliases** apply after a leading "human" ("human beta-secretase" had lost
   BACE1) and cover VHL, YAP1, BiP (HSPA5), ACYP2, PTBP1, VEGFA, PADI4.
+
+### 9.6 Second lookup-diff review
+
+The second diff was again taken against the v3 re-validated database, so 12
+of its 40 rows repeated the first sheet. 24 of 40 were right. Of the 16 wrong,
+12 are addressed below; 4 are beyond lookup (AL light chains in three rows, and
+one row that merges hnRNP H and hnRNP K papers under "hnRNP").
+
+* **A guessed organism.** When no human or named-organism entry fits, the last
+  step took an entry of an organism the abstract does not mention. It no
+  longer does so for a family member picked by a run match (stefin -> bovine
+  stefin C in a human stefin B paper, lactate dehydrogenase -> zebrafish
+  D-LDH, LEA -> the A. avenae LEA1) or when the abstract is about human
+  material (lens alpha-crystallin -> M. tuberculosis Hsp16.3).
+* **Species word before the name.** If the text writes a species word right
+  before the name ("chicken cystatin", "bovine carbonic anhydrase II", "hen
+  egg-white lysozyme") more often than "human", that organism's own entry is
+  searched first (Swiss-Prot, then TrEMBL; exact name or primary gene). On the
+  v3 population this touches 65 kept proteins, mostly yeast, bovine, mouse and
+  fly; the search changes the identity only when that organism has an entry
+  with exactly the written name.
+* **Member marks.** A Roman numeral after the head stays in the qualifier-free
+  variant ("human semenogelin I" -> "semenogelin I", the UniProt alternative
+  name of SEMG1), and a completed member name passes through the aliases
+  ("arginine deiminase 4" -> PADI4).
+* Aliases now apply after leading qualifiers ("mutant recombinant
+  amelogenin" -> AMELX) and cover HNRNPA2B1, hnRNP H, collagen I (COL1A1);
+  lactate dehydrogenase, glutathione S-transferase (a fusion tag) and
+  chondroitin sulfate proteoglycan are classes; TrEMBL entries take their
+  name from the submission name (fly Rasputin had none).
+* `compare_lookup.py --exclude <sheets>` leaves already reviewed proteins out of
+  the next sample.
+
+### 9.7 Third lookup-diff review
+
+25 of 40 right; of the 15 wrong, 11 are addressed below, 4 are not (the p85alpha
+SH3 domain of bovine PI3K, monellin chain B written as "chain B of monellin",
+Atlantic cod beta-parvalbumin, rat CD2 written as "cell adhesion molecule CD2").
+
+Comparing this diff with the previous one showed a regression the sample
+barely touched: 43 proteins newly lost, most of them exact names of a single
+protein from an organism the abstract does not mention (melittin, kassinin,
+uperin 3.5, aurein 3.3, alpha-hemolysin, stem bromelain, plasmid RepA,
+microcin). Section 9.6 had stopped accepting such entries in any abstract that
+mentions humans. The rule now applies only when the name designates a human
+family whose members were all rejected (alpha-crystallin -> CRYAA/CRYAB,
+JNK-interacting protein -> MAPK8IP1-3); a unique name without human entries is
+accepted as before. A rejected human family also opens the search in other
+organisms, so a single protein of a named organism is still found
+(methionine aminopeptidase of Pyrococcus furiosus).
+
+Member completion accepts an abbreviation between the name and the mark
+("glycogen synthase kinase (GSK)-3beta") and digit+Greek marks; completed
+names go through the aliases. New aliases: COL4A1 (collagen IV), RBP4 (retinol
+binding protein), FGA (fibrinogen A alpha-chain), GSK3B, PLAT (tissue-type
+plasminogen activator), LRP1, SOD1 (Cu,Zn superoxide dismutase), and the
+pattern "histone deacetylase N" -> HDACN (UniProt renamed human HDAC6 to
+"Protein deacetylase HDAC6").
+
+### 9.8 Fourth lookup-diff review
+
+24 of 35 judged rows right (5 rows were UniProt failures and are left out). Of
+the 11 wrong, 5 are fixed, 4 come from names cut by NER ("Ras-GAP SH3-domain-
+binding protein", "the microtubule-associated protein; Tau", eIF2alpha without
+"alpha", bovine trypsinogen) and 2 are AL light chains. The 35 proteins lost
+through section 9.6 came back.
+
+* **Family names in a named organism.** Opening the wider search for a
+  rejected human family (9.7) let one member of some species through, because
+  the 25 hits of that search hold a single member by chance: apolipoprotein ->
+  mouse ApoC-I, laminin -> rat beta-2, integrin -> mouse alpha-E, OTU -> rat
+  OTUD5. After a rejected human family, run matches that add a member mark are
+  refused in every organism; exact names still count.
+* **Outage.** 22 consecutive proteins came back as `lookup_error` and one
+  (CTLA4) as an empty answer in the same minutes. Requests now retry six times
+  with backoff up to 60 s, and a single 400/404 is retried once before it is
+  read as "no entry".
+* Member marks of the form letter-numeral ("apolipoprotein C-II") are
+  completed; aliases for VHL spellings, SERPINA3 (alpha1-antichymotrypsin) and
+  RB1 (retinoblastoma protein); "glutathione S transferase" without the
+  hyphen is a class.
+* Curated proteins (SOD1 and the rest of the built-in list) show no UniProt
+  name in the diff: the built-in table stores the accession and gene only.
+
+### 9.9 Re-validation v3c: roles
+
+The v3c re-validation was the first on the expanded corpus run with
+`--role-thresholds`. Aggregators fell from 660 to 408. The NLI votes were
+identical to the previous run for 187 of the 192 aggregators that changed:
+the decision mode changed, not the evidence. With thresholds the role was
+decided once on the mean scores over all papers, so a protein with aggregator
+votes in some papers and regulator votes in others became a regulator, and
+the regulator rule of 9.4 then made it a condensate candidate or a
+`regulator_only` drop (apoE, cystatin C, cytochrome c, ubiquitin, presenilin-1).
+That contradicts the curator's rule that a protein is an aggregator when any
+of its papers supports it. The aggregator vote of any paper now decides in
+both modes; the thresholds only choose the modifier subtype of proteins with no
+aggregator vote. On the v3c data this returns 222 proteins to the aggregator
+role before the vocabulary gates.
+
+Tau was not lost: its rows under "tau" (curated) and "protein tau" stayed
+aggregators. A third row, "microtubule associated protein tau" from one APP
+paper, was dropped as `no_aggregation_mention`: its sentence names paired
+helical filaments, which was not an aggregation term, and the hyphenless name
+did not match the curated "microtubule-associated protein tau". Curated
+synonyms now match with hyphens read as spaces, and lesion names count as
+aggregation terms (paired helical / straight filaments, neurofibrillary
+tangles, Lewy bodies and neurites, aggresomes). "tau-peptide", resolved to a
+Valyl-tRNA ligase modifier, is aliased to MAPT.
+
+### 9.10 Review of v3d: evidence tier for aggregators
+
+Sheets of the v3d run (aggregators 50, condensate candidates 20, modifiers 30,
+dropped 30):
+
+| sheet | right | 95 % CI | main errors |
+|---|---|---|---|
+| aggregators | 30/50 = 0.60 | 0.46-0.72 | role 16, identity 3 |
+| condensate candidates (as components) | 8/20 = 0.40 | 0.22-0.61 | regulators 6, off-topic 4, identity 2 |
+| modifiers | 13/30 = 0.43 | 0.27-0.61 | off-topic 5, subtype 5, identity 4 |
+| dropped (rejection right) | 22/30 = 0.73 | 0.56-0.86 | identity 6, role 2 |
+
+Aggregators by evidence: curated 9/9, two or more aggregator votes 7/9, a
+single vote 14/32. 372 of the 579 aggregators rest on a single vote, and the
+role errors are modulators the model calls aggregators (IL-6, myeloperoxidase,
+fibulin-4, ACE, CRP, CD40L).
+
+`self_aggregation_evidence` looks for a sentence in which the protein itself
+is the aggregating subject or the source of the aggregate ("Cdc19 forms
+amyloid-like aggregates", "amyloid formation of yeast phosphoglycerate
+kinase", "neurokinin B functional amyloid"), and rejects modulator syntax
+("amyloid formation of KT5-6 was accelerated by fibulin-4", "GKN1 prevented
+amyloid aggregation", "anti-amyloidogenic"). The patterns were written on the
+v3d sheet and checked on the two earlier aggregator sheets, which they were
+not fitted to: proteins with such a sentence were right in 38 of 50 cases,
+proteins without in 12 of 47. Every kept aggregator now carries
+`aggregation_evidence`: `curated`, `text` or `model_only`. Nothing is dropped
+on it; on v3d it splits the 512 non-curated aggregators into 231 `text` and
+281 `model_only`. The tier is exported and shown on the review sheets.
+
+Condensate candidates that come only from regulator votes (584 of 697 on v3d)
+now carry the subtype `regulator`, so condensatedb can tell them from
+components. ch-TOG is aliased to CKAP5.
+
+### 9.11 Predicted amyloids in the build
+
+Aggregators supported by the model vote alone (`model_only`) are predicted
+amyloids: they stay in the database, marked. The tier now travels into the
+build: `AmyloidRecord.aggregation_evidence`, a new last column of
+`records.tsv`, a field of the graph nodes, and `mined_aggregation_evidence` in
+`reconcile_stats.json`. A merged protein takes the strongest tier of its rows
+(curated > text > model_only). A `model_only` record votes in the consensus
+with half the weight of a text-mined one (0.125 against 0.25), so it cannot
+outweigh a text-supported or curated label. Training sets that need confirmed
+positives should exclude `aggregation_evidence = model_only`.
+
+`condensate_candidates.tsv` gets a `condensate_role` column (component or
+regulator), and the export keeps the regulator subtype of a condensate
+candidate when all its rows came through regulator votes.
+
+v3e re-validation: aggregators 579 (curated 67, text 227, model_only 285);
+condensate candidates 697 (component 479, regulator 218).

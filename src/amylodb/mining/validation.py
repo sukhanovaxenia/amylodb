@@ -191,6 +191,7 @@ _CLASS_PHRASES = {
     "serine protease", "protease", "proteases", "kinase", "a chain", "b chain", "a-chain",
     "aspartic", "aspartic protease", "aspartic proteases", "aspartyl protease", "cysteine protease",
     "metalloprotease", "heat shock", "heat-shock proteins", "heat-shock protein",
+    "lactate dehydrogenase", "glutathione s-transferase", "glutathione s transferase", "gst", "chondroitin sulfate proteoglycan",
     "b-chain", "light chain", "heavy chain", "toll-like", "prion-like", "nac domain",
     "brichos domain", "heterogeneous nuclear ribonucleoproteins",
     "microtubule-associated protein", "tau variant", "egg", "w protein", "c protein", "apo",
@@ -248,6 +249,33 @@ ALIAS_TO_GENE = {
     "polypyrimidine tract-binding protein": "PTBP1", "polypyrimidine tract binding protein": "PTBP1",
     "vascular endothelial growth factor": "VEGFA", "vegf": "VEGFA",
     "peptidyl arginine deiminase 4": "PADI4", "arginine deiminase 4": "PADI4", "pad4": "PADI4",
+    "hnrnpa2": "HNRNPA2B1", "hnrnp a2": "HNRNPA2B1", "hnrnp a2/b1": "HNRNPA2B1", "hnrnpa2b1": "HNRNPA2B1",
+    "heterogeneous nuclear ribonucleoprotein a2": "HNRNPA2B1",
+    "heterogeneous nuclear ribonucleoprotein a2/b1": "HNRNPA2B1",
+    "hnrnp h": "HNRNPH1", "collagen i": "COL1A1", "collagen type i": "COL1A1", "type i collagen": "COL1A1",
+    "amelogenin": "AMELX",
+    # third lookup-diff review
+    "collagen iv": "COL4A1", "type iv collagen": "COL4A1", "collagen type iv": "COL4A1",
+    "retinol binding protein": "RBP4", "retinol-binding protein": "RBP4",
+    "fibrinogen a": "FGA", "fibrinogen a alpha-chain": "FGA", "fibrinogen a alpha chain": "FGA",
+    "fibrinogen alpha chain": "FGA", "fibrinogen aalpha": "FGA",
+    "glycogen synthase kinase 3beta": "GSK3B", "glycogen synthase kinase-3beta": "GSK3B",
+    "glycogen synthase kinase 3β": "GSK3B", "gsk-3beta": "GSK3B", "gsk3beta": "GSK3B", "gsk-3β": "GSK3B",
+    "tissue-type plasminogen activator": "PLAT", "tissue plasminogen activator": "PLAT",
+    "type plasminogen activator": "PLAT",
+    "low-density lipoprotein receptor-related protein": "LRP1",
+    "low density lipoprotein receptor-related protein": "LRP1",
+    "cu, zn superoxide dismutase": "SOD1", "cu-zn superoxide dismutase": "SOD1",
+    "cu/zn superoxide dismutase": "SOD1", "cu,zn superoxide dismutase": "SOD1",
+    "cu,zn-superoxide dismutase": "SOD1", "cuzn superoxide dismutase": "SOD1", "cuznsod": "SOD1",
+    # fourth lookup-diff review
+    "von-hippel lindau": "VHL", "von hippel-lindau": "VHL", "von hippel lindau": "VHL",
+    "von hippel lindau protein": "VHL", "vhl protein": "VHL",
+    "alpha1 antichymotrypsin": "SERPINA3", "alpha-1-antichymotrypsin": "SERPINA3",
+    "alpha1-antichymotrypsin": "SERPINA3", "alpha 1-antichymotrypsin": "SERPINA3",
+    "antichymotrypsin": "SERPINA3", "retinoblastoma protein": "RB1",
+    "tau-peptide": "MAPT", "tau peptide": "MAPT", "tau peptides": "MAPT",
+    "ch-tog": "CKAP5", "chtog": "CKAP5",
 }
 
 
@@ -512,6 +540,69 @@ _MODEL_TAXA = [
 ]
 
 
+# Species words written before a protein name -> taxon of its UniProt entries.
+_SPECIES_WORD_TAXA = {
+    "chicken": 9031, "hen": 9031, "bovine": 9913, "cow": 9913, "porcine": 9823, "pig": 9823,
+    "equine": 9796, "horse": 9796, "murine": 10090, "mouse": 10090, "rat": 10116,
+    "rabbit": 9986, "ovine": 9940, "sheep": 9940, "yeast": 559292, "zebrafish": 7955,
+    "drosophila": 7227, "human": 9606,
+}
+_LEADING_QUALIFIER = re.compile(
+    r"^(?:(?:human|recombinant|mutant|native|wild[- ]type|synthetic|purified|full[- ]length)\s+)+", re.I)
+
+
+_PATTERN_ALIASES = [
+    # UniProt renamed the human HDACs ("Protein deacetylase HDAC6")
+    (re.compile(r"^histone deacetylase[ -]?(\d{1,2})$"), r"HDAC\1"),
+]
+
+
+def alias_gene(label: str) -> Optional[str]:
+    """Gene symbol for a curated alias or alias pattern, else None (``label`` lowercase)."""
+    if label in ALIAS_TO_GENE:
+        return ALIAS_TO_GENE[label]
+    for rx, repl in _PATTERN_ALIASES:
+        if rx.match(label):
+            return rx.sub(repl, label)
+    return None
+
+
+def strip_leading_qualifiers(name: str) -> str:
+    """"mutant recombinant amelogenin" -> "amelogenin"; species words other than human stay."""
+    return _LEADING_QUALIFIER.sub("", name or "").strip()
+
+
+def species_prefix_taxon(name: Optional[str], text: Optional[str]) -> Optional[int]:
+    """Taxon of the species word the text writes right before the name, or None.
+
+    "amyloidogenic chicken cystatin" -> chicken; "bovine carbonic anhydrase II"
+    -> cattle; one word may sit between ("hen egg-white lysozyme"). The species
+    word must be the most frequent one before the name and must not be human
+    (human entries are searched first anyway).
+    """
+    if not name or not text:
+        return None
+    core = strip_leading_qualifiers(name)
+    words = core.split()
+    while words and words[0].lower() in _SPECIES_WORD_TAXA:
+        words = words[1:]
+    core = " ".join(words)
+    if len(core) < 3:
+        return None
+    rx = re.compile(r"\b(" + "|".join(_SPECIES_WORD_TAXA) + r")(?:\s+[\w-]+)?\s+" + re.escape(core) + r"(?![a-z])",
+                    re.I)
+    counts: Dict[int, int] = {}
+    for m in rx.finditer(text):
+        taxon = _SPECIES_WORD_TAXA[m.group(1).lower()]
+        counts[taxon] = counts.get(taxon, 0) + 1
+    if not counts:
+        return None
+    top = max(counts, key=counts.get)
+    if top == 9606 or counts.get(9606, 0) >= counts[top]:
+        return None
+    return top
+
+
 def named_model_taxa(text: Optional[str], limit: int = 2) -> List[int]:
     """Taxa of the model organisms ``text`` names, most mentioned first (at most ``limit``)."""
     if not text:
@@ -520,7 +611,9 @@ def named_model_taxa(text: Optional[str], limit: int = 2) -> List[int]:
     return [t for n, t in sorted(counts, key=lambda x: -x[0]) if n][:limit]
 
 
-_PARALOG_MARK = r"(?:[A-Z]|\d{1,2}[a-z]?|I{1,3}|IV|VI{0,3}|alpha|beta|gamma|delta|α|β|γ|δ)"
+_PARALOG_MARK = (r"(?:[A-Z]-(?:I{1,3}|IV|\d)|"                 # apolipoprotein C-II, A-I
+                 r"\d{1,2}(?:alpha|beta|gamma|delta|α|β|γ|δ)|[A-Z]|\d{1,2}[a-z]?|I{1,3}|IV|VI{0,3}|"
+                 r"alpha|beta|gamma|delta|α|β|γ|δ)")
 
 
 def paralog_extension(name: Optional[str], text: Optional[str]) -> Optional[str]:
@@ -533,7 +626,9 @@ def paralog_extension(name: Optional[str], text: Optional[str]) -> Optional[str]
     """
     if not name or not text or len(name) < 4:
         return None
-    rx = re.compile(r"(?<![\w-])" + re.escape(name) + r"[\s-]?(" + _PARALOG_MARK + r")(?![A-Za-z])", re.I)
+    # "glycogen synthase kinase (GSK)-3beta": an abbreviation may sit before the mark
+    rx = re.compile(r"(?<![\w-])" + re.escape(name) + r"(?:\s*\([^()]{1,12}\))?[\s-]?(" + _PARALOG_MARK
+                    + r")(?![A-Za-z0-9])", re.I)
     marks = set()
     for m in rx.finditer(text):
         mark = m.group(1)
@@ -592,7 +687,10 @@ def extend_truncated(surface: Optional[str], text: Optional[str], max_extra: int
 _AGG_TERMS = re.compile(
     r"\b(?:amyloid\w*|fibril\w*|protofibril\w*|aggregat\w*|disaggregat\w*|oligomer\w*|prion\w*|"
     r"misfold\w*|plaques?|deposits?|inclusions?|proteinopath\w*|seeding|fibrillogenesis|polyq|"
-    r"cross-?β|cross-?beta|β-sheets?|beta-sheets?|curli)\b", re.I)
+    r"cross-?β|cross-?beta|β-sheets?|beta-sheets?|curli|"
+    # lesion names that are aggregates ("PHFs containing ... tau" had no term)
+    r"paired helical filaments?|straight filaments?|neurofibrillary tangles?|tangles?|"
+    r"lewy bod(?:y|ies)|lewy neurites?|aggresom\w*)\b", re.I)
 _COND_TERMS = re.compile(
     r"\b(?:stress granules?|p-bod(?:y|ies)|processing bod(?:y|ies)|condensat\w*|"
     r"phase[- ]separat\w*|llps|ribonucleoprotein granules?|rnp granules?|rna granules?|"
@@ -658,6 +756,60 @@ def flex_mention(text: str, names: Iterable[str], min_len: int = 2) -> bool:
         pat = _flex_pattern(n.strip())
         if pat is not None and pat.search(low):
             return True
+    return False
+
+
+_AGG_NOUN = (r"(?:amyloid\w*|fibril\w*|aggregat\w*|oligomer\w*|protofibril\w*|filaments?|rodlets?|deposits?|"
+             r"nanorods?|prions?|polymers?)")
+_SELF_VERB = (r"(?:forms?|formed|forming|form\b|assembl\w*|self-assembl\w*|aggregat\w*|polymeri[sz]\w*|"
+              r"misfold\w*|fibrilli[sz]\w*|deposit\w*|convert\w*|adopts?)")
+_SELF_ADVERBS = (r"(?:\s+(?:protein|proteins|peptide|peptides|domain|itself|also|readily|spontaneously|can|could|"
+                 r"may|might|to|then|rapidly|slowly|that|which|efficiently))*")
+_FREE_TOKEN = r"(?:(?!was\b|were\b|is\b|are\b|by\b|whereas\b|and\b|on\b|of\b|in\b)[\w-]+\s+)?"
+_SELF_DETERMINERS = r"(?:(?:the|a|an|human|native|wild-type|recombinant|bovine|yeast|mutant|full-length)\s+)*"
+
+
+@functools.lru_cache(maxsize=20000)
+def _self_patterns(name_alt: str):
+    n = name_alt
+    return (
+        # "Cdc19 forms ...", "CAD-CD spontaneously aggregates"
+        re.compile(n + _SELF_ADVERBS + r"\s+" + _SELF_VERB, re.I),
+        # "amyloid formation of yeast phosphoglycerate kinase", "fibrils of X", "fibril forming propensity of X"
+        re.compile(_AGG_NOUN + r"(?:[\s-]+(?:formation|forming|propensity|form))*\s+"
+                   r"(?:of|by|from|formed by|composed of|made of|containing)\s+" + _SELF_DETERMINERS + _FREE_TOKEN + n,
+                   re.I),
+        # "neurokinin B amyloid", "pVHL fibrillation", "gelsolin amyloidosis"
+        re.compile(n + r"[\s-]+(?:(?:protein|peptide|domain|chain|derived|functional)[\s-]+)?" + _AGG_NOUN, re.I),
+        # "amyloidogenic gelsolin", but not "anti-amyloidogenic"
+        re.compile(r"(?<!anti-)amyloidogenic\s+(?:(?:human|mutant|protein)\s+)?" + n, re.I),
+        # "CA150 ... folds in microseconds and forms amyloid fibers"
+        re.compile(n + r"[^.;,]{0,80}?\b(?:forms?|formed|assembles?|self-assembles?)\s+(?:\w+\s+){0,2}?" + _AGG_NOUN,
+                   re.I),
+    )
+
+
+def self_aggregation_evidence(texts: Iterable[str], names: Iterable[str]) -> bool:
+    """True if a sentence of ``texts`` states that the protein itself aggregates.
+
+    The NLI model entails "X aggregates" for almost any protein named in an
+    amyloid abstract; a protein with a single aggregator vote was right in 14 of
+    32 cases on the v3d sheet. A sentence where the protein is the subject or
+    the source of the aggregate ("X forms fibrils", "amyloid formation of X",
+    "X amyloid") separates the two: on the two earlier aggregator sheets,
+    proteins with such a sentence were right in 37 of 49 cases and proteins
+    without in 12 of 46. Modulators fail it: "amyloid formation of KT5-6 was
+    accelerated by fibulin-4", "GKN1 prevented amyloid aggregation".
+    """
+    alts = sorted({re.escape(x.strip()) for x in _name_parts(names) if x and len(x.strip()) >= 2},
+                  key=len, reverse=True)
+    if not alts:
+        return False
+    pats = _self_patterns(r"(?<![\w-])(?:" + "|".join(alts) + r")(?![\w-])")
+    for t in texts:
+        for sent in _SENT_SPLIT.split(t or ""):
+            if any(p.search(sent) for p in pats):
+                return True
     return False
 
 

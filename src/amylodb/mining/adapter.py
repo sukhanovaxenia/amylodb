@@ -88,6 +88,10 @@ def mined_to_record(mined: Union[Dict, object]) -> AmyloidRecord:
         pmid=pmid or (pmids[0] if pmids else ""),
         source_pmids=pmids,
     )
+    rec.aggregation_evidence = _get(mined, "aggregation_evidence", "") or ""
+    if rec.aggregation_evidence == "model_only":
+        # a predicted amyloid votes with half the weight of a text-supported one
+        rec.evidence_weight = tier_weight(EvidenceTier.TEXT_MINED) / 2
     llps = (_get(mined, "undergoes_llps", "unknown") or "unknown")
     rec.undergoes_llps = True if str(llps).lower() in ("yes", "true", "1") else None
     rec.claim_scores = dict(_get(mined, "claim_scores", {}) or {})

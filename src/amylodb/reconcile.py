@@ -90,6 +90,10 @@ def _merge_group(records: List[AmyloidRecord]) -> AmyloidRecord:
             scores[k] = max(scores.get(k, 0.0), v)
     base.reversibility_votes = dict(votes)
     base.claim_scores = scores
+    # the strongest support any merged row has
+    rank = {"curated": 3, "text": 2, "model_only": 1}
+    tiers = [r.aggregation_evidence for r in records if getattr(r, "aggregation_evidence", "")]
+    base.aggregation_evidence = max(tiers, key=lambda t: rank.get(t, 0)) if tiers else ""
     return base
 
 

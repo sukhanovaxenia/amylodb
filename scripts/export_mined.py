@@ -78,10 +78,16 @@ def unify_roles(records: List[Dict]) -> List[Dict]:
                 mods.add(r["role_subtype"])
         subtypes = Counter(r["role_subtype"] for r in rows if r["protein_role"] == "modifier" and r.get("role_subtype"))
         evidence = any(r.get("condensate_evidence") or r["protein_role"] == "condensate" for r in rows)
+        # a condensate candidate stays a "regulator" only if no row is a component
+        cond_regulator = all(r.get("role_subtype") == "regulator" for r in rows if r["protein_role"] == "condensate")
+        rank = {"curated": 3, "text": 2, "model_only": 1}
+        tier = max((r.get("aggregation_evidence") or "" for r in rows), key=lambda t: rank.get(t, 0))
         for r in rows:
             r["protein_role"] = primary
             r["role_subtype"] = subtypes.most_common(1)[0][0] if primary == "modifier" and subtypes else \
-                ("" if primary != "modifier" else r.get("role_subtype", ""))
+                ("regulator" if primary == "condensate" and cond_regulator else
+                 "" if primary != "modifier" else r.get("role_subtype", ""))
+            r["aggregation_evidence"] = tier if primary == "aggregator" else ""
             r["modifier_roles"] = sorted(mods) if primary != "condensate" else []
             r["condensate_evidence"] = evidence
             r["forms_aggregates"] = primary == "aggregator"
@@ -139,6 +145,8 @@ def export(db_path: str) -> List[Dict]:
             # (gelsolin: aggregator, and inhibitor of Abeta fibrillisation)
             "modifier_roles": json.loads(p.get("modifier_roles") or "[]"),
             "condensate_evidence": bool(p.get("condensate_evidence")),
+            # curated | text (a sentence says the protein aggregates) | model_only
+            "aggregation_evidence": p.get("aggregation_evidence") or "",
             "uniprot_name": p.get("uniprot_name") or "",
             "match_type": p.get("match_type") or "",
             "resolved_from": p.get("resolved_from") or "",

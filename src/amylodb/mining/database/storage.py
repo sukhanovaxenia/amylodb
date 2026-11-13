@@ -179,7 +179,7 @@ class AmyloidDatabase:
                               ("resolved_name", "TEXT"), ("resolved_organism", "TEXT"),
                               ("role_subtype", "TEXT"), ("role_votes", "TEXT"), ("role_scores", "TEXT"),
                               ("organism_in_text", "INTEGER"), ("modifier_roles", "TEXT"),
-                              ("condensate_evidence", "INTEGER")):
+                              ("condensate_evidence", "INTEGER"), ("aggregation_evidence", "TEXT")):
                 self._ensure_column(cursor, "proteins", col, decl)
 
             # Create indexes
@@ -310,7 +310,7 @@ class AmyloidDatabase:
 
     ANNOTATION_COLUMNS = ("status", "protein_role", "uniprot_name", "match_type",
                           "lookup_stage", "resolved_from", "role_subtype", "organism_in_text",
-                          "role_scores", "modifier_roles", "condensate_evidence")
+                          "role_scores", "modifier_roles", "condensate_evidence", "aggregation_evidence")
 
     def set_protein_annotations(self, protein_id: int, values: Dict) -> None:
         """Write resolution provenance and status for one protein.
