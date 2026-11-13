@@ -644,8 +644,9 @@ kinase", "neurokinin B functional amyloid"), and rejects modulator syntax
 ("amyloid formation of KT5-6 was accelerated by fibulin-4", "GKN1 prevented
 amyloid aggregation", "anti-amyloidogenic"). The patterns were written on the
 v3d sheet and checked on the two earlier aggregator sheets, which they were
-not fitted to: proteins with such a sentence were right in 38 of 50 cases,
-proteins without in 12 of 47. Every kept aggregator now carries
+not fitted to: proteins with such a sentence were right in 46 of 51 cases
+(0.90, 95 % CI 0.79-0.96), proteins without in 21 of 46 (0.46, 0.32-0.60);
+see section 9.12 for the sample. Every kept aggregator now carries
 `aggregation_evidence`: `curated`, `text` or `model_only`. Nothing is dropped
 on it; on v3d it splits the 512 non-curated aggregators into 231 `text` and
 281 `model_only`. The tier is exported and shown on the review sheets.
@@ -672,3 +673,29 @@ candidate when all its rows came through regulator votes.
 
 v3e re-validation: aggregators 579 (curated 67, text 227, model_only 285);
 condensate candidates 697 (component 479, regulator 218).
+
+### 9.12 Re-check of the evidence tier on the earlier sheets
+
+The precision of `self_aggregation_evidence` quoted in 9.10 (38 of 50 with a
+sentence, 12 of 47 without; 37 of 49 and 12 of 46 in the code comments) could
+not be reproduced from the saved sheets: none of five candidate samples of the
+two earlier aggregator sheets (`review_v3_checked.tsv`, `review_v3b_checked.tsv`,
+100 rows) gives 97 rows with 50 right or 95 with 49. The figure was recomputed
+on a sample fixed before the run, with the curator's marks (`correct`): the
+100 rows minus two repeated ids (first occurrence kept) and id 630 (toll-like
+receptor 2), marked right on one sheet and wrong on the other, leaving 97 rows,
+67 right. Texts and names are those of the re-validation (titles and abstracts
+of the protein's papers; surface form, resolved name, long form, UniProt name,
+gene).
+
+| sample | with a sentence | without |
+|---|---|---|
+| main, 97 rows | 46/51 = 0.90 (0.79-0.96) | 21/46 = 0.46 (0.32-0.60) |
+| without identity errors | 43/46 | 17/37 |
+| without identity errors and curated proteins | 40/43 | 16/36 |
+| id 630 counted right / wrong | 46/51 / 46/51 | 22/47 / 21/47 |
+| v3d sheet the patterns were written on | 26/26 | 4/24 |
+
+The rule is unchanged; only the quoted figures are. `text` is a good filter for
+confirmed aggregators; `model_only` is right about half the time on these
+sheets, against 4 of 24 on the v3d sheet.

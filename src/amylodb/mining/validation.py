@@ -797,8 +797,8 @@ def self_aggregation_evidence(texts: Iterable[str], names: Iterable[str]) -> boo
     32 cases on the v3d sheet. A sentence where the protein is the subject or
     the source of the aggregate ("X forms fibrils", "amyloid formation of X",
     "X amyloid") separates the two: on the two earlier aggregator sheets,
-    proteins with such a sentence were right in 37 of 49 cases and proteins
-    without in 12 of 46. Modulators fail it: "amyloid formation of KT5-6 was
+    proteins with such a sentence were right in 46 of 51 cases and proteins
+    without in 21 of 46 (docs/changes_from_source.md, 9.12). Modulators fail it: "amyloid formation of KT5-6 was
     accelerated by fibulin-4", "GKN1 prevented amyloid aggregation".
     """
     alts = sorted({re.escape(x.strip()) for x in _name_parts(names) if x and len(x.strip()) >= 2},

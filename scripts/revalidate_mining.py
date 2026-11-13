@@ -336,8 +336,8 @@ def revalidate(db_path: str, out_path: str, lookup: Optional[Callable] = None,
                     annotations["condensate_evidence"] = int(rel["cond_mention"] or role == "condensate")
                     # How an aggregator is supported: a sentence stating that the
                     # protein itself aggregates ("text"), or the model's vote alone
-                    # ("model_only": right in 12 of 46 reviewed cases, against 37
-                    # of 49 for "text"). Kept either way; the tier is for filtering
+                    # ("model_only": right in 21 of 46 reviewed cases, against 46
+                    # of 51 for "text"; docs 9.12). Kept either way; the tier is for filtering
                     # and for stratified review.
                     if status == "kept" and role == "aggregator":
                         annotations["aggregation_evidence"] = (

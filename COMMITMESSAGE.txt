@@ -1,37 +1,11 @@
-mining: identity and role rules v3b-v3e, evidence tier for aggregators
+docs: recomputed precision of the aggregator evidence tier
 
-Rules added after the lookup-diff reviews 2-4 and the v3c/v3d re-validations
-(docs/changes_from_source.md, sections 9.6-9.11). Re-validated corpus v3e:
-1870 proteins = 1455 kept + 415 dropped; 579 aggregators (curated 67, text
-227, model_only 285); 697 condensate candidates (component 479, regulator 218).
-
-  * a species word written before the name selects that organism's entry
-    ("chicken cystatin"); no entry of an unnamed organism for a family run
-    match or in a human-material abstract; Roman member marks kept in the
-    qualifier-free variant; completed member names go through the aliases;
-    TrEMBL names read from submission names
-  * compare_lookup.py --exclude skips proteins reviewed on earlier sheets
-  * an unnamed organism is refused only when the name designates a human
-    family that was rejected (unique names such as melittin or RepA are
-    accepted again); a rejected human family opens the search in other
-    organisms; member completion through "(ABBR)" and digit+Greek marks;
-    aliases COL4A1, RBP4, FGA, GSK3B, PLAT, LRP1, SOD1 and the pattern
-    "histone deacetylase N" -> HDACN
-  * after a rejected human family, member-adding run matches are refused in
-    every organism; UniProt requests retry six times (backoff to 60 s) and a
-    single 400/404 once; letter-numeral member marks ("C-II"); aliases for
-    VHL spellings, SERPINA3, RB1
-  * any paper's aggregator vote makes an aggregator also with
-    --role-thresholds (the thresholds choose only the modifier subtype);
-    curated synonyms match with hyphens read as spaces; lesion names (PHF,
-    tangles, Lewy bodies, aggresomes) are aggregation terms
-  * aggregation_evidence for kept aggregators: curated | text (a sentence
-    states self-aggregation) | model_only; stored, exported, reported and
-    shown on review sheets; condensate candidates from regulator votes carry
-    the subtype "regulator"; alias ch-TOG -> CKAP5
-  * the tier reaches the build: AmyloidRecord.aggregation_evidence, last
-    column of records.tsv, graph nodes, reconcile_stats; strongest tier wins
-    on merge; model_only (predicted) records vote with half weight;
-    condensate_candidates.tsv gets condensate_role (component | regulator)
+The precision of self_aggregation_evidence quoted in docs 9.10 (38/50 with a
+sentence, 12/47 without) and in the code comments (37/49, 12/46) could not be
+reproduced from the saved review sheets. Recomputed on a sample fixed before
+the run (the two earlier aggregator sheets, curator's marks, repeated ids and
+one conflicting id removed; 97 rows): 46/51 with a sentence, 21/46 without.
+New section 9.12 gives the sample and the sensitivity variants. The rule is
+unchanged.
 
 Tests: 285 passed.
