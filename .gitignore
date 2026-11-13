@@ -27,3 +27,12 @@ models/
 
 # OS
 .DS_Store
+
+# Working tables, reports and archives in the repository root (move to data/)
+/_to_delete/
+/mined.json
+/review_*.tsv
+/lookup_diff*.tsv
+/revalidation_*.json
+*.tgz
+*.db

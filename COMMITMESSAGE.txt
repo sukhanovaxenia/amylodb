@@ -1,11 +1,6 @@
-docs: recomputed precision of the aggregator evidence tier
+gitignore: keep working tables, reports and archives out of git
 
-The precision of self_aggregation_evidence quoted in docs 9.10 (38/50 with a
-sentence, 12/47 without) and in the code comments (37/49, 12/46) could not be
-reproduced from the saved review sheets. Recomputed on a sample fixed before
-the run (the two earlier aggregator sheets, curator's marks, repeated ids and
-one conflicting id removed; 97 rows): 46/51 with a sentence, 21/46 without.
-New section 9.12 gives the sample and the sensitivity variants. The rule is
-unchanged.
-
-Tests: 285 passed.
+Review sheets, lookup diffs, re-validation reports and mined.json written to
+the repository root, patch archives, SQLite databases and the _to_delete/
+folder are ignored. The existing files were moved to data/reviews,
+data/reviews/json, data/mining_v3 and _to_delete/.
