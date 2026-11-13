@@ -1,6 +1,9 @@
-gitignore: keep working tables, reports and archives out of git
+fix: preserve model-only evidence weights during reconciliation
 
-Review sheets, lookup diffs, re-validation reports and mined.json written to
-the repository root, patch archives, SQLite databases and the _to_delete/
-folder are ignored. The existing files were moved to data/reviews,
-data/reviews/json, data/mining_v3 and _to_delete/.
+Use assigned evidence weights for conflicting labels and retain the strongest
+assigned weight when merging duplicate records. Model-only evidence keeps
+its documented 0.125 weight instead of being reset to 0.25.
+
+Add regression coverage for model-only duplicates, mixed support and a
+conflicting text-supported label. Verify 288 tests and correct weights for
+37 affected proteins in the saved v3e population.
