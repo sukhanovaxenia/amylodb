@@ -1,6 +1,5 @@
-gitignore: keep working tables, reports and archives out of git
+Merge codex/amylodb-001-fix: model-only weights in reconciliation
 
-Review sheets, lookup diffs, re-validation reports and mined.json written to
-the repository root, patch archives, SQLite databases and the _to_delete/
-folder are ignored. The existing files were moved to data/reviews,
-data/reviews/json, data/mining_v3 and _to_delete/.
+Reviewer fix for stage amylodb-001: reconciliation keeps the 0.125 weight
+of model_only records when voting and when merging duplicates (37 of 398
+proteins on the v3e export had been reset to 0.25).

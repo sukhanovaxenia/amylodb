@@ -699,3 +699,21 @@ gene).
 The rule is unchanged; only the quoted figures are. `text` is a good filter for
 confirmed aggregators; `model_only` is right about half the time on these
 sheets, against 4 of 24 on the v3d sheet.
+
+### 9.13 Preserve model-only weights during reconciliation
+
+The adapter assigned the documented 0.125 weight to `model_only` records, but
+reconciliation recomputed 0.25 from `TEXT_MINED`. This both removed the
+discount when merging duplicate rows and counted conflicting model-only and
+text-supported labels equally. Reconciliation now votes with each record's
+assigned weight and retains the strongest assigned weight when merging.
+The evidence tiers and the intended weights are unchanged.
+
+On the saved v3e export, 661 aggregator rows reconcile to 398 proteins with
+zero conflicts. Before this fix, 37 model-only proteins received 0.25 after
+merging; all 37 retain 0.125 after the fix. No protein is added or removed.
+Three regression tests cover model-only duplicates, a mixed-support group,
+and a conflicting text-supported label. The duplicate and conflict tests
+fail on the preceding code; the full local suite passes 288 tests after the
+fix. A three-row build fixture also checks exported weights, graph evidence,
+condensate roles and a two-row, 444-column feature matrix.

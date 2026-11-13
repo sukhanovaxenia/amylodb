@@ -24,7 +24,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
-from .provenance import EvidenceTier, PrionClass, Provenance, tier_weight
+from .provenance import EvidenceTier, PrionClass, Provenance
 from .schema import AmyloidRecord
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,9 @@ def _merge_group(records: List[AmyloidRecord]) -> AmyloidRecord:
     """
     base = max(records, key=lambda r: (int(r.evidence_tier), r.extraction_confidence))
     base.evidence_tier = max(r.evidence_tier for r in records)
-    base.evidence_weight = tier_weight(base.evidence_tier)
+    # Preserve the adapter's model-only discount; duplicate rows do not
+    # strengthen the evidence of the merged record.
+    base.evidence_weight = max(r.evidence_weight for r in records)
 
     provs = {r.provenance for r in records}
     # If a group mixes origins, mark it curated-backed when any curated record
@@ -134,7 +136,7 @@ def reconcile(records: List[AmyloidRecord],
         by_label: Dict[str, List[AmyloidRecord]] = defaultdict(list)
         for r in grp:
             if r.experimental_label:
-                weight[r.experimental_label] += tier_weight(r.evidence_tier)
+                weight[r.experimental_label] += r.evidence_weight
                 by_label[r.experimental_label].append(r)
         ranked = sorted(weight.items(), key=lambda x: x[1], reverse=True)
 

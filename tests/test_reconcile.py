@@ -3,6 +3,7 @@
 from amylodb.provenance import EvidenceTier, PrionClass, Provenance, RecordLevel
 from amylodb.reconcile import reconcile
 from amylodb.schema import AmyloidRecord
+from amylodb.mining.adapter import mined_to_record
 
 
 def _region(seq, uni, label, tier, src, prion=PrionClass.NOT_PRION, pmids=None):
@@ -52,3 +53,34 @@ def test_transmissible_exclusion_keeps_prion_like():
     res = reconcile([fus, prp], exclude_transmissible_prion=True)
     kinds = {r.uniprot_id for r in res.consensus}
     assert "P35637" in kinds and "P04156" not in kinds
+
+
+def _mined(support, forms=True, confidence=0.0):
+    return mined_to_record({
+        "uniprot_id": "P12345", "protein_name": "example",
+        "aggregation_evidence": support, "forms_aggregates": forms,
+        "extraction_confidence": confidence,
+    })
+
+
+def test_model_only_duplicates_keep_discounted_weight():
+    result = reconcile([_mined("model_only"), _mined("model_only")])
+    assert len(result.consensus) == 1
+    assert result.consensus[0].aggregation_evidence == "model_only"
+    assert result.consensus[0].evidence_weight == 0.125
+
+
+def test_text_support_restores_full_weight_in_mixed_group():
+    result = reconcile([_mined("model_only", confidence=0.9),
+                        _mined("text", confidence=0.1)])
+    assert len(result.consensus) == 1
+    assert result.consensus[0].aggregation_evidence == "text"
+    assert result.consensus[0].evidence_weight == 0.25
+
+
+def test_text_label_outvotes_conflicting_model_only_label():
+    result = reconcile([_mined("model_only"), _mined("text", forms=False)])
+    assert result.conflicts == []
+    assert len(result.consensus) == 1
+    assert result.consensus[0].experimental_label == "non-amyloid"
+    assert result.consensus[0].evidence_weight == 0.25
