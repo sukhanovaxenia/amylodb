@@ -717,3 +717,16 @@ and a conflicting text-supported label. The duplicate and conflict tests
 fail on the preceding code; the full local suite passes 288 tests after the
 fix. A three-row build fixture also checks exported weights, graph evidence,
 condensate roles and a two-row, 444-column feature matrix.
+
+### 9.14 Source modules that were not in git
+
+The `.gitignore` rule `models/`, meant for the downloaded weights in the
+repository root, also matched the source package `src/amylodb/mining/models/`
+(NLI claims, OpenBioNER, structure NER, triage, model registry). Its six files
+had never been committed, so a clone of the repository failed to collect three
+test modules (`No module named 'amylodb.mining.models'`) and could not run the
+model-based mining. The rule is now anchored to the root (`/models/`) and the
+six files are committed unchanged. Checked on a fresh clone with the package
+imported from the clone itself, not from the editable install of the working
+copy: three collection errors before, the full suite passing after. No rule of
+selection or annotation changed.

@@ -20,8 +20,9 @@ data/
 *.tsv.gz
 sequence_cache.json
 
-# Models / weights (downloaded on the host, never committed)
-models/
+# Models / weights (downloaded on the host, never committed). Anchored to the
+# root: an unanchored models/ also hid the source package src/amylodb/mining/models/
+/models/
 *.safetensors
 *.bin
 

@@ -1,5 +1,15 @@
-Merge codex/amylodb-001-fix: model-only weights in reconciliation
+mining: commit the model wrapper modules hidden by .gitignore
 
-Reviewer fix for stage amylodb-001: reconciliation keeps the 0.125 weight
-of model_only records when voting and when merging duplicates (37 of 398
-proteins on the v3e export had been reset to 0.25).
+The unanchored rule models/, meant for the downloaded weights in the
+repository root, also matched the source package src/amylodb/mining/models/.
+Its six modules (NLI claims, OpenBioNER, structure NER, triage, model
+registry; 840 lines) had never been committed, so a clone failed to collect
+three test modules with "No module named 'amylodb.mining.models'".
+
+  * .gitignore: models/ -> /models/ (weights in the root stay ignored)
+  * src/amylodb/mining/models/*.py added unchanged
+  * docs/changes_from_source.md, section 9.14
+
+Checked on fresh clones with the package imported from the clone, not from
+the editable install of the working copy: 3 collection errors before, 288
+passed after. No selection or annotation rule changed.
