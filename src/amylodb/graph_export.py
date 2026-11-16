@@ -43,10 +43,14 @@ def build_graph(records: List[AmyloidRecord]) -> Dict:
             "protein_name": r.protein_name,
             "prion_class": r.prion_class.value,
             "evidence_tier": int(r.evidence_tier),
-            "is_amyloid": bool(r.is_amyloid),
+            # three-valued: None is a candidate, neither confirmed nor refuted
+            "is_amyloid": None if r.is_amyloid is None else bool(r.is_amyloid),
+            "experimental_label": r.experimental_label,
             "undergoes_llps": r.undergoes_llps,
             "reported_method_tier": r.reported_method_tier,
             "aggregation_evidence": getattr(r, "aggregation_evidence", ""),
+            "evidence_basis": getattr(r, "evidence_basis", ""),
+            "evidence_items": list(getattr(r, "evidence_items", None) or []),
         })
         ids.add(r.record_id)
         # A protein-level record is the natural hub for its UniProt.

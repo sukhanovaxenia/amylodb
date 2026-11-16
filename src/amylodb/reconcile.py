@@ -24,7 +24,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
-from .provenance import EvidenceTier, PrionClass, Provenance
+from .provenance import EvidenceTier, PrionClass, Provenance, aggregation_rank
 from .schema import AmyloidRecord
 
 logger = logging.getLogger(__name__)
@@ -92,11 +92,27 @@ def _merge_group(records: List[AmyloidRecord]) -> AmyloidRecord:
             scores[k] = max(scores.get(k, 0.0), v)
     base.reversibility_votes = dict(votes)
     base.claim_scores = scores
-    # the strongest support any merged row has
-    rank = {"curated": 3, "text": 2, "model_only": 1}
-    tiers = [r.aggregation_evidence for r in records if getattr(r, "aggregation_evidence", "")]
-    base.aggregation_evidence = max(tiers, key=lambda t: rank.get(t, 0)) if tiers else ""
+    # the strongest support any merged row has, with the basis of that row
+    supports = [(r.aggregation_evidence, getattr(r, "evidence_basis", "")) for r in records
+                if getattr(r, "aggregation_evidence", "")]
+    tier, basis = max(supports, key=lambda tb: aggregation_rank(*tb)) if supports else ("", "")
+    base.aggregation_evidence, base.evidence_basis = tier, basis
+    base.evidence_items = collect_evidence_items(records)
     return base
+
+
+def collect_evidence_items(records: List[AmyloidRecord]) -> List[Dict]:
+    """Union of the curator decisions of ``records``, independent of any vote.
+
+    Deduplicated on (source_row_id, decision) and sorted on it, so the result
+    does not depend on the input order.
+    """
+    seen: Dict[Tuple, Dict] = {}
+    for r in records:
+        for item in getattr(r, "evidence_items", None) or []:
+            key = (str(item.get("source_row_id", "")), str(item.get("decision", "")))
+            seen.setdefault(key, dict(item))
+    return [seen[k] for k in sorted(seen)]
 
 
 def reconcile(records: List[AmyloidRecord],
@@ -147,11 +163,16 @@ def reconcile(records: List[AmyloidRecord],
                 "labels": sorted(labels),
                 "weights": {k: round(v, 3) for k, v in ranked},
                 "sources": sorted({r.source_db for r in grp}),
+                # curator decisions of the whole group survive an unresolved conflict
+                "evidence_items": collect_evidence_items(grp),
             })
             continue
 
         winner = ranked[0][0]
-        consensus.append(_merge_group(by_label[winner]))
+        merged = _merge_group(by_label[winner])
+        # the label is the winner's; the decision history is the whole group's
+        merged.evidence_items = collect_evidence_items(grp)
+        consensus.append(merged)
 
     stats = {
         "input_records": len(records),

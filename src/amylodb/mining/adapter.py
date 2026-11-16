@@ -18,7 +18,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Union
 
-from ..provenance import EvidenceTier, Provenance, RecordLevel, classify_prion, tier_weight
+from ..provenance import (CURATOR_TIERS, EvidenceTier, Provenance, RecordLevel, aggregation_weight,
+                          classify_prion, is_candidate_support, tier_weight)
 from ..schema import AmyloidRecord
 
 # aggregate_structure -> curated secondary_structure_class vocabulary
@@ -89,9 +90,20 @@ def mined_to_record(mined: Union[Dict, object]) -> AmyloidRecord:
         source_pmids=pmids,
     )
     rec.aggregation_evidence = _get(mined, "aggregation_evidence", "") or ""
-    if rec.aggregation_evidence == "model_only":
-        # a predicted amyloid votes with half the weight of a text-supported one
-        rec.evidence_weight = tier_weight(EvidenceTier.TEXT_MINED) / 2
+    rec.evidence_basis = _get(mined, "evidence_basis", "") or ""
+    rec.evidence_items = [dict(x) for x in (_get(mined, "evidence_items", None) or [])]
+    # A predicted amyloid (model_only) or an LCR-based candidate votes with half
+    # the weight of a text-supported record; an unresolved one does not vote.
+    rec.evidence_weight = (tier_weight(EvidenceTier.TEXT_MINED)
+                           * aggregation_weight(rec.aggregation_evidence, rec.evidence_basis))
+    if rec.aggregation_evidence in CURATOR_TIERS:
+        # Only the curator states decide the label from the support; the older
+        # tiers keep the forms_aggregates label (a text record with
+        # forms_aggregates False stays non-amyloid).
+        if is_candidate_support(rec.aggregation_evidence, rec.evidence_basis):
+            rec.is_amyloid, rec.experimental_label = None, "candidate"
+        else:
+            rec.is_amyloid, rec.experimental_label = True, "amyloid"
     llps = (_get(mined, "undergoes_llps", "unknown") or "unknown")
     rec.undergoes_llps = True if str(llps).lower() in ("yes", "true", "1") else None
     rec.claim_scores = dict(_get(mined, "claim_scores", {}) or {})

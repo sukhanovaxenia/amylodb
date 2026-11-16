@@ -84,6 +84,60 @@ def tier_weight(tier: EvidenceTier) -> float:
     return TIER_WEIGHT[tier]
 
 
+# Support of a mined aggregator (`aggregation_evidence`, with `evidence_basis`
+# for a curator decision) -> (rank, share of the TEXT_MINED weight). The rank
+# only picks the support reported for a protein whose rows share a UniProt; it
+# never replaces the EvidenceTier ordering of the consensus vote. Curator
+# decisions of 2026-11-16 (docs/changes_from_source.md 9.16): a curator review
+# of an aggregation description outranks the automatic text rule; an LCR basis
+# makes a candidate, voting at half weight like a model-only prediction; an
+# unresolved attribution does not vote.
+_AGGREGATION_SUPPORT = {
+    ("curated", ""): (5, 1.0),
+    ("curator_review", "aggregation_text"): (4, 1.0),
+    ("text", ""): (3, 1.0),
+    ("model_only", ""): (2, 0.5),
+    ("curator_review", "LCR_text"): (1, 0.5),
+    ("unresolved", ""): (0, 0.0),
+}
+# Supports that make a candidate, not an amyloid label: is_amyloid stays None.
+CANDIDATE_SUPPORT = {("curator_review", "LCR_text"), ("unresolved", "")}
+# Supports whose label is decided by the support itself; the older tiers keep
+# taking the label from forms_aggregates.
+CURATOR_TIERS = {"curator_review", "unresolved"}
+
+
+def _support_key(tier: str, basis: str = "") -> tuple:
+    """Normalise (tier, basis): the basis distinguishes curator_review only.
+
+    Raises ValueError for a curator_review whose basis is not a known one, so a
+    malformed decision cannot silently take a rank or a weight.
+    """
+    tier = tier or ""
+    key = (tier, basis or "") if tier == "curator_review" else (tier, "")
+    if tier == "curator_review" and key not in _AGGREGATION_SUPPORT:
+        raise ValueError(f"curator_review with unknown evidence_basis {basis!r}")
+    return key
+
+
+def aggregation_rank(tier: str, basis: str = "") -> int:
+    """Rank of an aggregator support; -1 for an empty or unknown tier."""
+    return _AGGREGATION_SUPPORT.get(_support_key(tier, basis), (-1, 1.0))[0]
+
+
+def aggregation_weight(tier: str, basis: str = "") -> float:
+    """Share of the TEXT_MINED weight a mined record of this support votes with.
+
+    Empty and unknown tiers keep the full weight, as before this table existed.
+    """
+    return _AGGREGATION_SUPPORT.get(_support_key(tier, basis), (-1, 1.0))[1]
+
+
+def is_candidate_support(tier: str, basis: str = "") -> bool:
+    """True when the support makes a candidate (label 'candidate', is_amyloid None)."""
+    return _support_key(tier, basis) in CANDIDATE_SUPPORT
+
+
 def evidence_tier_from_curated(evidence_type: str) -> EvidenceTier:
     """Map a curated ``evidence_type`` string to an `EvidenceTier`.
 

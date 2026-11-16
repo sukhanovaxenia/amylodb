@@ -24,6 +24,8 @@ import sqlite3
 from collections import Counter
 from typing import Dict, List
 
+from amylodb.provenance import aggregation_rank
+
 DECIDED_REVERSIBILITY = ("reversible", "irreversible", "conditionally_reversible")
 
 
@@ -80,14 +82,23 @@ def unify_roles(records: List[Dict]) -> List[Dict]:
         evidence = any(r.get("condensate_evidence") or r["protein_role"] == "condensate" for r in rows)
         # a condensate candidate stays a "regulator" only if no row is a component
         cond_regulator = all(r.get("role_subtype") == "regulator" for r in rows if r["protein_role"] == "condensate")
-        rank = {"curated": 3, "text": 2, "model_only": 1}
-        tier = max((r.get("aggregation_evidence") or "" for r in rows), key=lambda t: rank.get(t, 0))
+        # strongest support of the accession, with the basis of the row giving it
+        tier, basis = max(((r.get("aggregation_evidence") or "", r.get("evidence_basis") or "")
+                           for r in rows), key=lambda tb: aggregation_rank(*tb))
+        # every row's curator decisions, whatever support is reported
+        items: Dict[tuple, Dict] = {}
+        for r in rows:
+            for it in r.get("evidence_items") or []:
+                items.setdefault((str(it.get("source_row_id", "")), str(it.get("decision", ""))), it)
+        items_list = [items[k] for k in sorted(items)]
         for r in rows:
             r["protein_role"] = primary
             r["role_subtype"] = subtypes.most_common(1)[0][0] if primary == "modifier" and subtypes else \
                 ("regulator" if primary == "condensate" and cond_regulator else
                  "" if primary != "modifier" else r.get("role_subtype", ""))
             r["aggregation_evidence"] = tier if primary == "aggregator" else ""
+            r["evidence_basis"] = basis if primary == "aggregator" else ""
+            r["evidence_items"] = list(items_list)
             r["modifier_roles"] = sorted(mods) if primary != "condensate" else []
             r["condensate_evidence"] = evidence
             r["forms_aggregates"] = primary == "aggregator"
@@ -147,6 +158,10 @@ def export(db_path: str) -> List[Dict]:
             "condensate_evidence": bool(p.get("condensate_evidence")),
             # curated | text (a sentence says the protein aggregates) | model_only
             "aggregation_evidence": p.get("aggregation_evidence") or "",
+            # curator decisions (stage amylodb-005): basis of a curator_review /
+            # unresolved support, and the decision record of this row
+            "evidence_basis": p.get("evidence_basis") or "",
+            "evidence_items": [json.loads(p["curator_decision"])] if p.get("curator_decision") else [],
             "uniprot_name": p.get("uniprot_name") or "",
             "match_type": p.get("match_type") or "",
             "resolved_from": p.get("resolved_from") or "",

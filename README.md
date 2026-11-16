@@ -111,6 +111,15 @@ section 9.15, for provenance, the NLI false-positive control, and limitations.
 Candidates without confirmed amyloid evidence remain excluded from training
 sets that require confirmed positives.
 
+Curator decisions are carried by two further support values (section 9.16):
+`curator_review`, with the basis `aggregation_text` (label `amyloid`) or
+`LCR_text` (label `candidate`, `is_amyloid` empty), and `unresolved` (label
+`candidate`, no vote). For a UniProt with several rows the reported support is
+the strongest one — curated > curator review of an aggregation description >
+text > model_only > curator review of an LCR > unresolved — and every row's
+decision, with its PMIDs and region or construct scope, is kept in
+`evidence_items`.
+
 See `docs/running.md` for setup, model download (`scripts/fetch_models.py`),
 model validation (`scripts/check_models.py`), mining and the quality audit
 (`scripts/audit_mining.py`); `docs/mining.md` for how claims become fields; and

@@ -921,3 +921,53 @@ Both commands write to new temporary directories and print their paths. The
 second verifies the latest audit run. They do not overwrite the source database
 or the saved results. Repeating the counts does not replace the manual source
 review: applying this manifest to another database hash is rejected.
+
+### 9.16 Curator-decision supports, labels and provenance (amylodb-005a)
+
+Decisions of 2026-11-16 (curator). Stage 005a changes the code that carries
+such decisions; it applies none of them to a database (that is stage 005b, on a
+copy of v3e).
+
+* **New support values.** `aggregation_evidence = curator_review` with
+  `evidence_basis` `aggregation_text` or `LCR_text`, and `aggregation_evidence =
+  unresolved` (`evidence_basis = unresolved_attribution`). A `curator_review`
+  with any other basis is rejected (ValueError), not silently ranked.
+* **Labels.** Only the two curator states take their label from the support:
+  `curator_review/aggregation_text` -> `amyloid`; `curator_review/LCR_text`
+  and `unresolved` -> new label `candidate` with `is_amyloid` empty (neither
+  confirmed nor refuted). `curated`, `text`, `model_only` and an empty tier keep
+  the label from `forms_aggregates`, so a text record with
+  `forms_aggregates = 0` stays `non-amyloid`. `is_amyloid` is three-valued in
+  the record, in `records.tsv` (empty) and in `graph.json` (`null`).
+* **Weights** (share of the TEXT_MINED weight 0.25): curated, text and
+  `curator_review/aggregation_text` 1 (0.25); `model_only` and
+  `curator_review/LCR_text` 1/2 (0.125); `unresolved` 0. An explicit weight of 0
+  is now kept: `AmyloidRecord.evidence_weight` defaults to None ("not set") and
+  only then takes the tier weight.
+* **Support of a protein with several rows** (alias unification in
+  `export_mined.unify_roles` and the consensus merge): curated 5 >
+  curator_review/aggregation_text 4 > text 3 > model_only 2 >
+  curator_review/LCR_text 1 > unresolved 0, with the basis of the row that gives
+  it. This order picks the reported support only; the EvidenceTier ordering of
+  the consensus vote is unchanged. One function (`provenance.aggregation_rank`,
+  `aggregation_weight`) replaces three copies of the old rank table.
+* **Provenance.** Each curator decision is a JSON object in the new column
+  `proteins.curator_decision` (with `evidence_basis`; additive migration).
+  The export turns it into `evidence_items`; alias unification and the
+  consensus union the items of the whole group *before* the label vote, so the
+  decision of a losing candidate (an unresolved desmin row beside a curated
+  structure) is kept, and an unresolved conflict lists them in
+  `conflicts.json`. `records.tsv` gains the columns `evidence_basis` and
+  `evidence_items`; graph nodes gain `experimental_label`, `evidence_basis`
+  and `evidence_items`. FASTA, the feature matrix, `modifiers.tsv` and
+  `condensate_candidates.tsv` do not carry them.
+
+Checked: the old and the new code on the unchanged v3e (SHA-256 dd4e701b...)
+and on the mini fixture give identical values in every earlier field of
+mined.json, the per-record adapter output (661 aggregator records), records.tsv,
+graph.json and conflicts.json, with empty new fields and the same accessions
+(data/reviews/amylodb-005a/; a tampered copy is detected). New tests cover the
+eight older tier x flag combinations, the curator states, the weight sentinel,
+the hnRNPDL and desmin alias pairs in both input orders, curated + candidate in
+both orders, an unresolved conflict and the records.tsv/graph.json round trip
+of a peptide scope; two deliberate code mutations make them fail.

@@ -179,7 +179,9 @@ class AmyloidDatabase:
                               ("resolved_name", "TEXT"), ("resolved_organism", "TEXT"),
                               ("role_subtype", "TEXT"), ("role_votes", "TEXT"), ("role_scores", "TEXT"),
                               ("organism_in_text", "INTEGER"), ("modifier_roles", "TEXT"),
-                              ("condensate_evidence", "INTEGER"), ("aggregation_evidence", "TEXT")):
+                              ("condensate_evidence", "INTEGER"), ("aggregation_evidence", "TEXT"),
+                              # curator decisions (amylodb-005): basis and the decision record
+                              ("evidence_basis", "TEXT"), ("curator_decision", "TEXT")):
                 self._ensure_column(cursor, "proteins", col, decl)
 
             # Create indexes

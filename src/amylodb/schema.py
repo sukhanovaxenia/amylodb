@@ -74,11 +74,26 @@ class AmyloidRecord(AmyloidEntry):
     # aggregates) or "model_only" (the NLI vote alone: a predicted amyloid,
     # kept and marked, about 1 in 4 confirmed on review). "" elsewhere.
     aggregation_evidence: str = ""
+    # For aggregation_evidence "curator_review": "aggregation_text" or
+    # "LCR_text"; "unresolved_attribution" beside "unresolved". "" elsewhere.
+    evidence_basis: str = ""
+    # Individual curator decisions behind this record, one dict per source row
+    # (decision, basis, supporting PMIDs, region/construct scope, ...). Kept
+    # through alias unification and consensus whichever label wins, so the
+    # scope of a peptide or construct result is never lost (docs 9.16).
+    evidence_items: List[Dict] = field(default_factory=list)
+
+    # Redeclared from AmyloidEntry. is_amyloid is three-valued: None for a
+    # candidate (neither confirmed nor refuted). evidence_weight None means
+    # "not set": __post_init__ fills it from the tier, while an explicit 0
+    # (an unresolved record that must not vote) is kept.
+    is_amyloid: Optional[bool] = True
+    evidence_weight: Optional[float] = None
 
     def __post_init__(self) -> None:
         # Keep the inherited scalar evidence_weight aligned with the unified tier
         # so the curated unifier's weighted voting keeps working unchanged.
-        if not self.evidence_weight:
+        if self.evidence_weight is None:
             self.evidence_weight = tier_weight(self.evidence_tier)
 
     def dedup_key(self) -> Tuple:

@@ -179,6 +179,7 @@ _RECORD_COLUMNS = [
     "extraction_confidence", "evidence_weight", "pmid", "source_pmids",
     "undergoes_llps", "reported_methods", "reported_method_tier",
     "reversibility_votes", "claim_scores", "aggregation_evidence",
+    "evidence_basis", "evidence_items",
 ]
 
 
@@ -192,7 +193,8 @@ def _write_records_tsv(records: List[AmyloidRecord], path: str) -> None:
                 r.record_id, r.provenance.value, r.record_level.value,
                 r.prion_class.value, int(r.evidence_tier),
                 r.source_db, r.protein_name, r.gene_name, r.uniprot_id, r.organism,
-                r.region_start, r.region_end, r.sequence, r.is_amyloid, r.experimental_label,
+                r.region_start, r.region_end, r.sequence,
+                "" if r.is_amyloid is None else r.is_amyloid, r.experimental_label,
                 r.secondary_structure_class, r.pathogenicity,
                 r.reversibility, r.assembly_mechanism, r.is_functional, r.is_pathological,
                 f"{r.extraction_confidence:.3f}", f"{r.evidence_weight:.3f}",
@@ -202,5 +204,8 @@ def _write_records_tsv(records: List[AmyloidRecord], path: str) -> None:
                 json.dumps(r.reversibility_votes, sort_keys=True) if r.reversibility_votes else "",
                 json.dumps(r.claim_scores, sort_keys=True) if r.claim_scores else "",
                 getattr(r, "aggregation_evidence", ""),
+                getattr(r, "evidence_basis", ""),
+                json.dumps(r.evidence_items, sort_keys=True, ensure_ascii=False)
+                if getattr(r, "evidence_items", None) else "",
             ])
     logger.info("Wrote %d records to %s", len(records), path)

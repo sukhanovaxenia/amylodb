@@ -201,6 +201,14 @@ python scripts/revalidate_mining.py \
   database; the tier is the last column of `records.tsv` and a field of the
   graph nodes, and a `model_only` record votes with half weight. Exclude
   `model_only` when a set of confirmed amyloids is needed (training labels).
+  Two curator states exist for decisions recorded after review (docs 9.16):
+  `curator_review` with `evidence_basis` `aggregation_text` (label `amyloid`,
+  full weight) or `LCR_text` (label `candidate`, `is_amyloid` empty, half
+  weight), and `unresolved` (label `candidate`, weight 0). The per-row
+  decisions with their PMIDs and region/construct scope are the
+  `evidence_items` column of `records.tsv` and field of the graph nodes; FASTA,
+  the feature matrix, `modifiers.tsv` and `condensate_candidates.tsv` do not
+  carry them. Exclude `LCR_text` and `unresolved` from confirmed positives.
 * Condensate candidates with the subtype `regulator` reached the list through
   regulator votes only (they regulate a condensate rather than belong to it).
 * `dropped:lookup_error` means UniProt could not be reached after four
