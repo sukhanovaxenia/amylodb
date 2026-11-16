@@ -1,15 +1,16 @@
-mining: commit the model wrapper modules hidden by .gitignore
+docs: candidate eligibility criterion and the v3e population audit
 
-The unanchored rule models/, meant for the downloaded weights in the
-repository root, also matched the source package src/amylodb/mining/models/.
-Its six modules (NLI claims, OpenBioNER, structure NER, triage, model
-registry; 840 lines) had never been committed, so a clone failed to collect
-three test modules with "No module named 'amylodb.mining.models'".
+Record the curator's decision of 2026-11-14 in README and in
+docs/changes_from_source.md section 9.15. Candidate eligibility may rest
+on aggregation, condensate formation, an LCR/APR or a computational
+prediction for the same protein or region. The protein's own amyloid
+aggregation is reviewed separately. NLI text classification is kept
+distinct from sequence-based prediction. No LCR/APR method or threshold
+is selected.
 
-  * .gitignore: models/ -> /models/ (weights in the root stay ignored)
-  * src/amylodb/mining/models/*.py added unchanged
-  * docs/changes_from_source.md, section 9.14
-
-Checked on fresh clones with the package imported from the clone, not from
-the editable install of the working copy: 3 collection errors before, 288
-passed after. No selection or annotation rule changed.
+The audit compares all 1870 v3e protein rows with their saved
+status and evidence, not with historical y/n marks:
+1807 unchanged, 15 text-supported inclusion proposals (13 aggregation,
+2 LCR), 9 conditional NLI-only proposals, 39 unresolved. The database,
+selection code and export are unchanged (SHA-256 dd4e701b...). Working
+tables and audit scripts stay outside git in data/reviews/amylodb-004/.

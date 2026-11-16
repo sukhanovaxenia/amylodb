@@ -79,6 +79,38 @@ python -m amylodb build --waltzdb waltzdb.csv --amyload AmyLoad.csv --out build/
   Only transmissible mammalian prion pathology can be excluded, and only on
   request (`--exclude-transmissible-prion`).
 
+### Candidate eligibility and evidence of self-aggregation
+
+The curator's decision of 2026-11-14 distinguishes an **amyloidogenicity
+candidate** from a protein with demonstrated self-aggregation. At least one
+source-specific observation of the protein or a defined region may support
+candidate eligibility: aggregation, condensate formation,
+a low-complexity region (LCR), an aggregation-prone region (APR), or a
+computational prediction of aggregation. Record the entity, source and method
+behind each basis. A condensate, LCR/APR or prediction alone does not establish
+amyloid formation.
+
+Review candidate eligibility separately from evidence of the protein's own
+amyloid aggregation. An appropriately marked `model_only` record with a positive
+model vote may be retained as a candidate. Text classification by NLI is distinct
+from sequence-based prediction; neither should be presented as experimental
+confirmation. "Not established in the reviewed material" is not a negative
+experimental result. Entity, organism, role and subtype errors remain errors;
+co-mention or regulation of another protein's assembly does not establish the
+candidate's own property.
+
+This decision does not select new LCR/APR methods or thresholds, change functional
+roles, or modify the saved database automatically. The amylodb-004 audit compares
+all **1870 v3e rows against their saved status/evidence**, not historical y/n
+correctness marks. It identifies **15 text-supported inclusion proposals**
+(13 aggregation, 2 LCR), **9 conditional NLI-only proposals**, and **39 unresolved
+rejected rows**. The other 1807 retain their status in this bounded audit; this
+is not a new certification of their scientific correctness. No database changes
+were applied. See [`docs/changes_from_source.md`](docs/changes_from_source.md),
+section 9.15, for provenance, the NLI false-positive control, and limitations.
+Candidates without confirmed amyloid evidence remain excluded from training
+sets that require confirmed positives.
+
 See `docs/running.md` for setup, model download (`scripts/fetch_models.py`),
 model validation (`scripts/check_models.py`), mining and the quality audit
 (`scripts/audit_mining.py`); `docs/mining.md` for how claims become fields; and

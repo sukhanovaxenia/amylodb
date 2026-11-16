@@ -730,3 +730,194 @@ six files are committed unchanged. Checked on a fresh clone with the package
 imported from the clone itself, not from the editable install of the working
 copy: three collection errors before, the full suite passing after. No rule of
 selection or annotation changed.
+
+### 9.15 Candidate eligibility and the v3e coverage audit (amylodb-004)
+
+The curator's decision of 2026-11-14 separates **candidate eligibility** from
+**evidence of the protein's own amyloid aggregation**. One source-specific
+observation concerning the same protein or a defined region may establish a
+basis for candidacy: aggregation, condensate formation, an LCR, an APR, or a
+computational prediction of aggregation. A correctly identified, explicitly
+marked prediction may be retained without being described as a confirmed
+amyloid. This extends the review interpretation beyond requiring experimental
+self-aggregation for every candidate. It does not turn a condensate, LCR/APR,
+or prediction into experimental proof.
+
+Keep the entity, source, method and evidence basis explicit. An NLI classification
+of a paper is different from a sequence-based predictor. A saved positive
+aggregator vote supports the stated `model_only` basis; an empty vote or abstention
+does not. Regulation or co-mention of another protein's assembly does not by
+itself establish a property of the candidate. Identity, organism, role and subtype
+errors remain separate review concerns. No new LCR/APR method, score threshold,
+consensus weight or training-positive criterion has been selected by this policy.
+
+In amylodb-003 the curator applied this interpretation to IDE (23), SIRT1 (309)
+and YAP1 (732): their `new_correct` marks changed from unresolved to y for
+candidate admissibility, while their own aggregation remained `not_established`
+in the reviewed abstracts. This was a three-record annotation update, not a
+population-wide reassessment. The source database and selection code were not
+changed.
+
+**Population coverage checked on 2026-11-15.** The audit included every row in
+`data/mining_v3/amyloid_aggregation.revalidated.db`, including dropped rows.
+The unit is a `proteins.id` row, not a unique accession. Database SHA-256:
+`dd4e701bdebe599d258f5a8cf9289eaddce3e517ca48f6d0d49a1280dfa27049`.
+
+| Saved v3e state or evidence | Rows |
+|---|---:|
+| All protein rows | 1870 |
+| kept / dropped | 1455 / 415 |
+| kept aggregator / condensate / modifier | 579 / 697 / 179 |
+| Aggregator evidence: curated / text / model_only | 67 / 227 / 285 |
+| model_only with a positive saved aggregator vote | 283 |
+| model_only without a positive saved aggregator vote | 2 (IDs 328, 465) |
+| Condensate component labels / regulator labels | 479 / 218 |
+| Dropped rows with a positive saved aggregator vote | 14 |
+| Dropped rows with cleared accession | 415 |
+| Unique nonempty accessions across the database | 1051 |
+| Rows covered by any historical checked-sheet y/n | 451 |
+| Rows without a historical checked-sheet y/n | 1419 |
+
+The 14 dropped rows with an aggregator vote are IDs 77, 78, 347, 591, 667, 677,
+703, 800, 822, 857, 981, 1072, 1399 and 1734: thirteen are
+`dropped:no_aggregation_mention`, one is `dropped:off_topic`. They are a queue for
+checking identity and eligibility, not fourteen verified restorations. The two
+`model_only` rows without a positive vote need a different documented basis or
+an unresolved assessment; the missing vote is not evidence that they cannot
+aggregate.
+
+**These counts are evidence inventories, not counts of changed correctness
+labels.** The 283 stored positive model votes do not establish 283 corrected
+records: some records can still have identity or other annotation errors.
+Likewise, a `condensate_evidence` flag comes from vocabulary/context and does not
+independently establish the protein's own condensate formation. There are no
+structured LCR/APR result columns in this snapshot; this does not establish that
+the linked papers contain no such evidence. Dropped rows have their accession
+and final role/evidence fields cleared by revalidation, so these empty fields
+cannot be interpreted as negative biological evidence.
+
+**Selected baseline (2026-11-16).** The curator chose the saved v3e
+status/evidence as the comparison baseline, rather than historical y/n
+correctness marks. This is a counterfactual inclusion audit with existing
+identity gates and functional roles held fixed. Previously kept records are
+carried forward; they are not all reclassified as amyloidogenic candidates or
+newly certified correct. In particular, retaining a modifier does not assert
+that it aggregates itself.
+
+The read-only census and sentence retrieval cover all 1870 protein IDs and
+7163 protein–paper links. For the 214 late rejections (195 `regulator_only`,
+13 `no_aggregation_mention`, 6 `off_topic`), titles and aggregation/condensate/
+LCR/APR retrieval sentences were reviewed. Full saved abstracts were inspected
+for potentially qualifying or ambiguous cases. Each late rejection has an
+explicit assessment with reason and linked PMID provenance. The 201 earlier
+identity/noise rejections retain their existing gate failure. Lexical hits,
+LLPS extraction labels, generic family properties, and condensate-context flags
+are not automatically treated as a property of the resolved protein.
+
+| Outcome relative to saved v3e | Rows |
+|---|---:|
+| kept → kept (existing selection carried forward) | 1455 |
+| dropped → candidate proposal supported by source text | 15 |
+| dropped → conditional candidate proposal from saved NLI only | 9 |
+| dropped → unresolved: identity/organism/construct | 24 |
+| dropped → unresolved: insufficient/ambiguous evidence | 15 |
+| dropped unchanged: earlier identity/noise gate | 201 |
+| dropped unchanged: no new qualifying basis found in saved corpus | 151 |
+| **Total** | **1870** |
+
+Thus the partition is **1807 unchanged status + 15 text-supported proposals +
+9 conditional NLI-only proposals + 39 unresolved = 1870**. No kept→dropped
+status change is proposed by this criterion-only audit. This does not establish
+that every kept record is correct or that every remaining rejection is justified.
+The 151 no-new-basis assessments are bounded by saved titles and retrieved
+abstract sentences, not exhaustive negative findings from the literature.
+Some saved abstracts are truncated; no new API retrieval or full-text review
+was performed.
+
+The 15 text-supported proposals comprise:
+
+- **Aggregation descriptions (13):** 12, 151, 602, 689, 703, 769, 800, 967,
+  973, 982, 987, 1019, 1138. The evidence scope must remain attached: e.g.
+  semenogelin peptide GSFSIQYTYHV (602), B-domain-deleted FVIII (689), CK5
+  C-terminal regions (800), expanded/fused ataxin-1 (987), and expanded TBP (1019).
+  These include recoveries missed by the old role/relevance filters, not solely
+  gains attributable to broadening the scientific definition.
+- **LCR descriptions (2):** hnRNPDL (1040, PMID 30279180) and SRRD (1139,
+  PMID 38315730). The hnRNPDL evidence is its low-complexity region; the direct
+  polymer-structure experiments in that paper concern hnRNPA2. SRRD regulation
+  of TDP-43 aggregation is not evidence that SRRD forms amyloid.
+
+The **9 conditional NLI-only proposals** are 77, 78, 347, 591, 677, 822, 857,
+1399 and 1734. Each has a positive saved aggregator vote, but the source review
+does not establish its own aggregation. They belong in a separate prediction
+review queue, not an automatic restoration batch. In particular, CD20 (78) is
+an immunostaining marker in PMID 10518125 and was historically marked
+`correct=n`, `error_type=offtopic`. A positive NLI vote must not silently override
+this control. The accepted model-only interpretation for IDE/SIRT1/YAP1 does
+not establish that every stored model classification is correctly attributed.
+Of the 14 dropped rows with a positive vote, 703 and 800 have text support,
+these nine remain conditional, and 667/981/1072 are held for identity/taxon issues.
+
+If only the 15 text-supported proposals were later restored after identity
+verification, membership would be **1470 kept / 400 dropped**. Including all nine
+conditional NLI cases would instead give **1479 / 391**. These are scenarios,
+not observed database changes, a confidence interval, or upper/lower bounds on
+the full biological effect: the 39 unresolved cases and source limitations remain.
+All dropped accessions are cleared in v3e; restoration still requires checking
+the accession and construct. The actual snapshot remains **1455 / 415**.
+
+Among existing aggregators, **283 of 285 model_only rows** have a positive saved
+vote and retain their prediction interpretation, subject to existing identity
+and annotation errors. IDs **328 and 465** lack that support and are separately
+flagged for evidence-label review. For 328, the saved paper uses V8 protease as
+a reagent against apomyoglobin fragments; for 465, the desmin versus associated
+mutant-protein attribution remains unresolved. Neither abstention becomes a
+prediction, and this audit does not automatically delete either record.
+
+**Historical controls.** Fifteen checked sheets contain 725 marked observations
+covering 451 IDs. Eight of the 24 total proposals overlap those sheets (77, 78,
+151, 602, 703, 822, 987, 1019; 15 observations). The old marks are preserved with
+their source, annotator, status, accession, role and note in
+`historical_crosscheck.tsv`; they are not a complete v3e correctness baseline.
+For example, the earlier collagen-VII identity error for 151 is distinct from
+its current collagen-I assignment; earlier successful identity checks for 987
+and 1019 support investigating the subsequent role-filter rejection. The
+conflicting old GAPR-1 note that its paper says nothing about aggregation is
+contradicted by the retained abstract itself (PMID 31636315).
+
+**Verification and reproduction.** The audit opens SQLite with `mode=ro`, pins
+the source SHA-256, requires exactly one output row per ID and exactly one manual
+assessment for every late rejection, and checks all supporting PMIDs against
+protein–paper links. Independent SQL joins confirm the transition matrix and
+zero missing/extra IDs. Six invalid-input controls reject duplicate/missing IDs,
+unlinked PMIDs, an NLI-only proposal without a positive vote, a stale baseline
+status, and a missing reason. Controls also retain the accepted IDE/SIRT1/YAP1
+interpretation, recover ataxin-1/TBP/GAPR-1, hold wrong-entity examples, and avoid
+assigning another protein's LCR to PARP1 or TFEB aggregation to TFE3. The database
+hash is unchanged. No new model inference, sequence analysis, API retrieval,
+production-code change, database update, or export was performed.
+
+Working artifacts (outside git) are in `data/reviews/amylodb-004/`:
+
+- `population_inventory.tsv`, `inventory_summary.json`, `inventory_v3e.py`:
+  original full-population census;
+- `screen_rows.tsv`, `sentence_hits.tsv`, `screen_v3e.py`: evidence retrieval;
+- `late_rejection_assessment.tsv`: 214 explicit source-review decisions;
+- `population_effect.tsv`: all 1870 baseline rows and audit outcomes;
+- `candidate_proposals.tsv`, `unresolved_records.tsv`,
+  `evidence_label_review.tsv`, `historical_crosscheck.tsv`: review queues;
+- `effect_summary.json`, `verification.json`: counts, hashes and checks;
+- `audit_candidate_effect.py`, `verify_candidate_effect.py`: reproducible
+  counting and input-validation checks.
+
+From the repository root:
+
+```sh
+python data/reviews/amylodb-004/audit_candidate_effect.py
+python data/reviews/amylodb-004/verify_candidate_effect.py
+```
+
+Both commands write to new temporary directories and print their paths. The
+second verifies the latest audit run. They do not overwrite the source database
+or the saved results. Repeating the counts does not replace the manual source
+review: applying this manifest to another database hash is rejected.
