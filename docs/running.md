@@ -209,6 +209,22 @@ python scripts/revalidate_mining.py \
   `evidence_items` column of `records.tsv` and field of the graph nodes; FASTA,
   the feature matrix, `modifiers.tsv` and `condensate_candidates.tsv` do not
   carry them. Exclude `LCR_text` and `unresolved` from confirmed positives.
+* Curator decisions are applied to a **copy** of a revalidated database by
+  `scripts/apply_curator_decisions.py` (table `configs/curator_decisions.tsv`,
+  snapshot manifest `configs/curator_decisions.json`):
+
+  ```bash
+  python scripts/apply_curator_decisions.py \
+      --db data/mining_v3/amyloid_aggregation.revalidated.db \
+      --out data/mining_v3/amyloid_aggregation.v3f.db \
+      --decisions configs/curator_decisions.tsv --snapshot configs/curator_decisions.json \
+      --cache data/reviews/amylodb-005b/uniprot_cache --report <report.json> [--offline]
+  ```
+
+  The decisions are bound to the v3e SHA-256. They are **not** re-applied
+  automatically after a new revalidation: the script refuses any other
+  snapshot, and the decisions must be re-checked (address, status, accession)
+  and rebound in a separate stage. The output is never overwritten.
 * Condensate candidates with the subtype `regulator` reached the list through
   regulator votes only (they regulate a condensate rather than belong to it).
 * `dropped:lookup_error` means UniProt could not be reached after four

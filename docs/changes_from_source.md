@@ -971,3 +971,51 @@ eight older tier x flag combinations, the curator states, the weight sentinel,
 the hnRNPDL and desmin alias pairs in both input orders, curated + candidate in
 both orders, an unresolved conflict and the records.tsv/graph.json round trip
 of a peptide scope; two deliberate code mutations make them fail.
+
+### 9.17 Curator decisions applied: v3e -> v3f (amylodb-005b)
+
+The decisions of 2026-11-16 on the amylodb-004 audit are applied to a copy of
+v3e (SHA-256 dd4e701b...) by `scripts/apply_curator_decisions.py`; v3e itself
+is unchanged. The table `configs/curator_decisions.tsv` holds 17 decisions:
+
+* **restore 15** dropped rows as aggregators with `aggregation_evidence =
+  curator_review`: 13 on an aggregation description (12, 151, 602, 689, 703,
+  769, 800, 967, 973, 982, 987, 1019, 1138) and 2 on an LCR (1040 hnRNPDL,
+  1139 SRRD). Each carries its supporting PMID, reason and region/construct
+  scope (the SEMG1 peptide GSFSIQYTYHV, B-domain-deleted FVIII, CK5 C-terminal
+  regions, polyQ ataxin-1 and TBP constructs, expanded ATXN3, ...);
+* **drop** 328 (V8 protease, a reagent) as `dropped:curator_offtopic`;
+* mark 465 (desmin, attribution unresolved) as `unresolved` (no vote).
+
+**Identity.** Every restored accession was checked against UniProt (primary
+accession, TaxID, organism, protein and gene name; answers cached). Four
+accessions held by the raw mining DB were wrong and are not used: Q02388
+(COL7A1) for human homotrimeric collagen I -> P02452; Q02383 (SEMG2) for
+semenogelin I, whose peptide GSFSIQYTYHV occurs only in SEMG1 -> P04279;
+P0C7T5 (ATXN1L) -> P54253 ATXN1; P62380 (TBPL1) -> P20226 TBP.
+
+**Result** (data/reviews/amylodb-005b/, outside git): 1469 kept / 401
+dropped rows (was 1455 / 415), 593 aggregator rows (was 579). The other 1853
+rows are identical in every v3e column (value and type) and have NULL in the
+two new columns; every other table is identical. The 17 rows change only the
+fields of the transition table.
+
+In the export (unify_roles per accession) 8 accessions appear (P80217, P00451,
+P54253, P20226, Q9UH36 and the three hydrophobins), P0C1U8 disappears, and 8
+existing accessions change: the restored row joins rows already kept. For
+P02452 (collagen I) and P13647 (keratin 5) the existing rows were modifiers;
+by the rule "aggregator if any paper supports it" the accession becomes an
+aggregator. For A9JX07 (PSMalpha3), P04279, P54252 and Q9H4G4 the reported
+support becomes `curator_review/aggregation_text` (it outranks text and
+model_only). For O14979 (hnRNPDL) and P17661 (desmin) the support stays
+`text` and the decisions of rows 1040 and 465 are listed in `evidence_items`.
+No accession outside the decisions changes.
+
+**Controls.** 15 fixture tests: the transition table, the cache reused
+offline, and 13 refusals (foreign hash, stale status, unknown name, duplicate
+decision, unlinked PMID, UniProt name mismatch, an error only in the last row,
+offline without cache, --db = --out, existing --out, ambiguous address,
+TaxID mismatch, re-application to the output), each leaving the source and an
+existing output byte-identical and no temporary file. On the real data:
+re-application to v3f, existing output and --db = --out are refused; an
+offline rebuild of v3f is byte-identical.

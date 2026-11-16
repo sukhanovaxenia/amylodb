@@ -1,21 +1,18 @@
-evidence: curator-decision supports, candidate label and decision provenance
+curator decisions: apply 17 reviewed decisions to a copy of v3e (v3f)
 
-Stage amylodb-005a: the code that carries curator decisions. No decision is
-applied to a database here; that is stage 005b, on a copy of v3e.
+Stage amylodb-005b. configs/curator_decisions.tsv holds the decisions of
+2026-11-16 on the amylodb-004 audit: restore 15 dropped rows as
+aggregators with aggregation_evidence curator_review (13 aggregation_text,
+2 LCR_text), drop 328 (V8 protease, a reagent) as dropped:curator_offtopic,
+mark 465 (desmin) unresolved. Each carries its PMIDs, reason and scope.
 
-- New supports: aggregation_evidence curator_review with evidence_basis
-  aggregation_text (label amyloid, weight 0.25) or LCR_text (label
-  candidate, is_amyloid None, weight 0.125), and unresolved (label
-  candidate, weight 0). curated, text, model_only and an empty tier keep the
-  label from forms_aggregates.
-- One rank/weight table in provenance.py replaces three copies; the support
-  of a multi-row protein is curated > curator/aggregation > text >
-  model_only > curator/LCR > unresolved. The EvidenceTier vote is unchanged.
-- An explicit evidence_weight of 0 is kept (None means "not set").
-- Per-row decisions (proteins.curator_decision, additive migration) become
-  evidence_items, unioned over the whole group before the label vote and
-  written to records.tsv, graph.json and conflicts.json. is_amyloid is
-  three-valued in the outputs.
+scripts/apply_curator_decisions.py binds the decisions to the v3e SHA-256
+(configs/curator_decisions.json), checks each address and PMID, checks
+every restored accession against UniProt (cached), applies all decisions
+in one transaction to a private copy and publishes it with os.link, never
+overwriting. Four raw-DB accessions were wrong and are replaced: COL7A1 ->
+COL1A1, SEMG2 -> SEMG1, ATXN1L -> ATXN1, TBPL1 -> TBP.
 
-Old and new code give identical earlier fields on the unchanged v3e and the
-mini fixture; 27 new tests, 315 passed. docs/changes_from_source.md 9.16.
+Result (data outside git): 1469 kept / 401 dropped, 593 aggregator rows;
+the other 1853 rows and all other tables identical. 15 new tests with 13
+refusal controls; 330 passed. docs/changes_from_source.md 9.17, running.md.

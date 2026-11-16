@@ -1,0 +1,8 @@
+{
+ "snapshot": "v3e",
+ "db": "data/mining_v3/amyloid_aggregation.revalidated.db",
+ "db_sha256": "dd4e701bdebe599d258f5a8cf9289eaddce3e517ca48f6d0d49a1280dfa27049",
+ "decisions": "configs/curator_decisions.tsv",
+ "decided": "2026-11-16",
+ "note": "Decisions are bound to this snapshot only. After a new revalidation they must be re-checked and rebound in a separate stage."
+}
