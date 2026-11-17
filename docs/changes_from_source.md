@@ -1000,7 +1000,8 @@ rows are identical in every v3e column (value and type) and have NULL in the
 two new columns; every other table is identical. The 17 rows change only the
 fields of the transition table.
 
-In the export (unify_roles per accession) 8 accessions appear (P80217, P00451,
+In the role/support/label/weight/decision projection of the export
+(unify_roles per accession), 8 accessions appear (P80217, P00451,
 P54253, P20226, Q9UH36 and the three hydrophobins), P0C1U8 disappears, and 8
 existing accessions change: the restored row joins rows already kept. For
 P02452 (collagen I) and P13647 (keratin 5) the existing rows were modifiers;
@@ -1009,7 +1010,12 @@ aggregator. For A9JX07 (PSMalpha3), P04279, P54252 and Q9H4G4 the reported
 support becomes `curator_review/aggregation_text` (it outranks text and
 model_only). For O14979 (hnRNPDL) and P17661 (desmin) the support stays
 `text` and the decisions of rows 1040 and 465 are listed in `evidence_items`.
-No accession outside the decisions changes.
+No accession outside the decisions changes in these fields. Comparing all
+exported fields also finds derived `co_mentioned_aggregators` changes for
+P02462, P04792, P07900 and Q9LHA8, following the restored aggregator roles.
+Thus 12 existing accessions change in the complete export, of which 8 change
+in the decision projection above. These four additional relationship changes
+do not change any extra SQLite rows or assign their proteins an aggregator role.
 
 **Controls.** 15 fixture tests: the transition table, the cache reused
 offline, and 13 refusals (foreign hash, stale status, unknown name, duplicate
@@ -1019,3 +1025,16 @@ TaxID mismatch, re-application to the output), each leaving the source and an
 existing output byte-identical and no temporary file. On the real data:
 re-application to v3f, existing output and --db = --out are refused; an
 offline rebuild of v3f is byte-identical.
+
+**Review fixes (2026-11-17).** Row IDs are normalised to positive integers
+before duplicate detection: `1` and `01` cannot silently address the same row
+twice. A report must use a new path, separate from the database output and
+outside the cache; it cannot replace an input or either SQLite file. The
+report is staged before publication, and a report publication failure rolls
+back only links created by that attempt. Source-hash validation precedes
+publication. Database and report staging files are reserved exclusively, so a
+leftover file with an old process ID is not overwritten or deleted. These
+changes affect validation and publication only; the 17 scientific decisions
+and the v3f content are unchanged. Additional fixture controls cover numeric
+ID aliases, report/input/output collisions and links, a report creation race,
+a pre-existing staging filename and an external source change during a run.
