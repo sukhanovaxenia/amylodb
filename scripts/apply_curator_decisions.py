@@ -41,6 +41,7 @@ import os
 import shutil
 import sqlite3
 import sys
+import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -77,9 +78,16 @@ def read_decisions(path: Path) -> List[Dict[str, str]]:
     seen = set()
     for r in rows:
         tag = f"decision row_id={r['row_id']}"
-        if r["row_id"] in seen:
+        try:
+            row_id = int(r["row_id"])
+        except (ValueError, TypeError) as exc:
+            raise DecisionError(f"{tag}: expected a positive integer") from exc
+        if row_id <= 0:
+            raise DecisionError(f"{tag}: expected a positive integer")
+        if row_id in seen:
             raise DecisionError(f"{tag}: duplicate")
-        seen.add(r["row_id"])
+        seen.add(row_id)
+        r["row_id"] = str(row_id)
         if r["action"] not in ACTIONS:
             raise DecisionError(f"{tag}: action {r['action']!r}")
         if r["evidence_basis"] not in BASES[r["action"]]:
@@ -239,13 +247,31 @@ def validate_against_source(src: sqlite3.Connection, decisions: List[Dict[str, s
                 raise DecisionError(f"{tag}: PMID {pm} not linked to the row")
 
 
+def _private_file(destination: Path) -> Path:
+    """Reserve an exclusive staging file beside its eventual destination."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=f".{destination.name}.tmp-", dir=destination.parent)
+    os.close(fd)
+    return Path(name)
+
+
 def apply(db: Path, out: Path, decisions_path: Path, snapshot_path: Path, cache: Path,
-          offline: bool = False, fetch: Callable[[str], bytes] = fetch_uniprot) -> Dict:
+          offline: bool = False, fetch: Callable[[str], bytes] = fetch_uniprot,
+          report_path: Optional[Path] = None) -> Dict:
     """Validate everything, build the output privately, publish it; return the report."""
     if out.exists():
         raise DecisionError(f"{out} exists; this script never overwrites")
     if os.path.realpath(db) == os.path.realpath(out):
         raise DecisionError("--db and --out are the same file")
+    if report_path is not None:
+        # Never let a report overwrite an input, a cache entry or the SQLite
+        # being published. lexists also refuses dangling symlinks.
+        if os.path.lexists(report_path):
+            raise DecisionError(f"{report_path} exists; the report is never overwritten")
+        if report_path.resolve() == out.resolve():
+            raise DecisionError("--report and --out are the same path")
+        if report_path.resolve().is_relative_to(cache.resolve()):
+            raise DecisionError("--report must be outside the UniProt cache")
     snapshot = json.loads(snapshot_path.read_text())
     source_sha = sha256(db)
     if source_sha != snapshot["db_sha256"]:
@@ -268,8 +294,9 @@ def apply(db: Path, out: Path, decisions_path: Path, snapshot_path: Path, cache:
             idents[d["row_id"]] = check_identity(d, uniprot_entry(d["uniprot_id"], cache, offline, fetch, usage))
     updates = {int(d["row_id"]): planned_updates(d, idents.get(d["row_id"]), source_sha) for d in decisions}
 
-    tmp = out.parent / f".{out.name}.tmp-{os.getpid()}"
-    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _private_file(out)
+    report_tmp = None
+    published = []
     con = None
     try:
         shutil.copyfile(db, tmp)
@@ -296,25 +323,41 @@ def apply(db: Path, out: Path, decisions_path: Path, snapshot_path: Path, cache:
         status = dict(con.execute("SELECT status = 'kept', COUNT(*) FROM proteins GROUP BY status = 'kept'"))
         con.execute("COMMIT")
         con.close(); con = None
+        report = {"source": str(db), "source_sha256": source_sha, "source_sha256_after": sha256(db),
+                  "out": str(out), "out_sha256": sha256(tmp), "snapshot": snapshot,
+                  "decisions": len(decisions),
+                  "by_action": {a: sum(d["action"] == a for d in decisions) for a in sorted(ACTIONS)},
+                  "row_ids": sorted(updates), "kept": status.get(1, 0), "dropped": status.get(0, 0),
+                  "uniprot": {"checked": len(idents), "unique_accessions": len(usage), "usage": usage},
+                  "changes": {pid: {c: {"before": before[pid].get(c), "after": v} for c, v in upd.items()
+                                    if before[pid].get(c) != v}
+                              for pid, upd in updates.items()}}
+        if report["source_sha256_after"] != source_sha:
+            raise DecisionError("source changed during the run")
+        if report_path is not None:
+            report_tmp = _private_file(report_path)
+            report_tmp.write_text(json.dumps(report, indent=1, ensure_ascii=False, default=str))
         os.link(tmp, out)           # fails if out appeared meanwhile: never overwrites
+        published.append((out, tmp))
+        if report_path is not None:
+            os.link(report_tmp, report_path)
+            published.append((report_path, report_tmp))
     except BaseException:
+        # A report publication failure must not leave an apparently successful
+        # database. Remove only links created by this attempt, never a rival's.
+        for destination, staging in reversed(published):
+            if destination.exists() and os.path.samefile(destination, staging):
+                destination.unlink()
+        raise
+    finally:
         if con is not None:
             con.close()
-        if tmp.exists():
-            tmp.unlink()            # this run's own unpublished file only
-        raise
-    tmp.unlink()
-    report = {"source": str(db), "source_sha256": source_sha, "source_sha256_after": sha256(db),
-              "out": str(out), "out_sha256": sha256(out), "snapshot": snapshot,
-              "decisions": len(decisions),
-              "by_action": {a: sum(d["action"] == a for d in decisions) for a in sorted(ACTIONS)},
-              "row_ids": sorted(updates), "kept": status.get(1, 0), "dropped": status.get(0, 0),
-              "uniprot": {"checked": len(idents), "unique_accessions": len(usage), "usage": usage},
-              "changes": {pid: {c: {"before": before[pid].get(c), "after": v} for c, v in upd.items()
-                                if before[pid].get(c) != v}
-                          for pid, upd in updates.items()}}
-    if report["source_sha256_after"] != source_sha:
-        raise DecisionError("source changed during the run")
+        for staging in (tmp, report_tmp):
+            if staging is not None:
+                try:
+                    staging.unlink(missing_ok=True)
+                except OSError as exc:
+                    print(f"warning: could not remove private file {staging}: {exc}", file=sys.stderr)
     return report
 
 
@@ -329,13 +372,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args(argv)
     try:
-        rep = apply(a.db, a.out, a.decisions, a.snapshot, a.cache, offline=a.offline)
+        rep = apply(a.db, a.out, a.decisions, a.snapshot, a.cache,
+                    offline=a.offline, report_path=a.report)
     except (DecisionError, OSError, sqlite3.Error) as e:
         print(f"refused: {e}", file=sys.stderr)
         return 1
-    if a.report:
-        a.report.parent.mkdir(parents=True, exist_ok=True)
-        a.report.write_text(json.dumps(rep, indent=1, ensure_ascii=False, default=str))
     print(f"applied {rep['decisions']} decisions {rep['by_action']}: kept {rep['kept']} / "
           f"dropped {rep['dropped']}; UniProt {rep['uniprot']['usage']}; out {rep['out_sha256'][:12]}")
     return 0

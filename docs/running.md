@@ -225,6 +225,21 @@ python scripts/revalidate_mining.py \
   automatically after a new revalidation: the script refuses any other
   snapshot, and the decisions must be re-checked (address, status, accession)
   and rebound in a separate stage. The output is never overwritten.
+  `--report` must name a new file, distinct from the SQLite output and outside
+  the UniProt cache. Existing reports, inputs and symbolic or hard links to
+  them are refused. If the report cannot be published, the new database is
+  withdrawn; pre-existing files are preserved.
+
+  An earlier `mined.json` is not refreshed by this command. To consume v3f,
+  export it explicitly and pass that file to the subsequent build:
+
+  ```bash
+  python scripts/export_mined.py --db data/mining_v3/amyloid_aggregation.v3f.db \
+      --out data/mining_v3/mined.v3f.json
+  ```
+
+  Use `--mined data/mining_v3/mined.v3f.json` for the separately approved full
+  build, rather than an export of a previous snapshot.
 * Condensate candidates with the subtype `regulator` reached the list through
   regulator votes only (they regulate a condensate rather than belong to it).
 * `dropped:lookup_error` means UniProt could not be reached after four
