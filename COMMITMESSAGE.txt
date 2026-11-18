@@ -1,15 +1,3 @@
-docs: record eIF3a as a condensate component without an aggregator label
+fix: preserve nested text in PubMed XML records
 
-Record the curator's decision for mining row 1399: stress-granule
-membership is accepted, an aggregator assignment is excluded, and a
-possible modulatory role remains unresolved without a modifier subtype.
-This is a record-specific annotation, not an experimental negative
-amyloid result or a new global selection rule.
-
-The nine-row NLI review packet retains eight undecided rows and one
-explicit curator decision with its source. All eight invalid-input
-controls pass, including promotion of eIF3a to an aggregator or a confirmed
-modifier. A fresh packet is byte-identical; all 348 tests pass.
-
-Document the review and its limits in README and changes_from_source 9.18.
-No SQLite, data sheets, model outputs or selection code are changed.
+Join descendant text in article titles and abstract sections so inline tags do not truncate content. Add offline regression coverage and document the corpus compatibility check.

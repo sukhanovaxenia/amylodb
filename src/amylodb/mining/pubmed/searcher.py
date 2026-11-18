@@ -329,13 +329,13 @@ class PubMedSearcher:
         
         # Title
         title_elem = elem.find(".//ArticleTitle")
-        title = title_elem.text if title_elem is not None else ""
+        title = "".join(title_elem.itertext()) if title_elem is not None else ""
         
         # Abstract
         abstract_parts = []
         for abs_text in elem.findall(".//AbstractText"):
             label = abs_text.get("Label", "")
-            text = abs_text.text or ""
+            text = "".join(abs_text.itertext())
             if label:
                 abstract_parts.append(f"{label}: {text}")
             else:

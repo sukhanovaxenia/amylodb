@@ -1080,3 +1080,25 @@ SHA-256 `49ee95a24ee40f9938aac98d1a6104577e5b04c5861eaff9c0362ee36244fd4b`.
 This is self-verification by the implementing agent, not a second scientific
 reviewer. No full build, model inference, mass retrieval or selection-rule
 change is included.
+
+
+## 9.19 PubMed XML preserves nested title and abstract text
+
+The PubMed XML parser now joins all descendant text in `ArticleTitle` and each
+`AbstractText`, including text following inline XML elements. This preserves
+chemical indices and italicized names without inserting formatting spaces.
+Missing and empty text elements remain empty strings; section labels and ordering
+are unchanged.
+
+Offline regression controls cover nested `sub`/`sup`/`i` elements, entity
+decoding, trailing text, structured abstract labels, ordinary metadata, empty
+fields, missing PMID and malformed XML. The new tests passed 10/10; the full suite
+passed 358 tests with 2 existing dependency warnings. On the 9,617 saved v3f
+paper rows, XML reconstructed from stored plain text parsed with zero title or
+abstract differences; 12 titles were empty. The v3f SQLite SHA-256 stayed
+`49ee95a24ee40f9938aac98d1a6104577e5b04c5861eaff9c0362ee36244fd4b` and the
+revalidated database SHA-256 stayed
+`dd4e701bdebe599d258f5a8cf9289eaddce3e517ca48f6d0d49a1280dfa27049`. Because
+the corpus stores plain text rather than the original XML, this compatibility
+check cannot count historical truncations; recovery of old records is not part
+of this fix. No database, mining output, model, or selection rule changed.
