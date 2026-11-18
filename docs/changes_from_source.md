@@ -1038,3 +1038,45 @@ changes affect validation and publication only; the 17 scientific decisions
 and the v3f content are unchanged. Additional fixture controls cover numeric
 ID aliases, report/input/output collisions and links, a report creation race,
 a pre-existing staging filename and an external source change during a run.
+
+
+### 9.18 NLI proposal review and the eIF3a decision (amylodb-006)
+
+The nine conditional NLI-only proposals from section 9.15 were checked against
+v3f: IDs 77, 78, 347, 591, 677, 822, 857, 1399 and 1734. The packet contains all
+8 linked papers, 9 protein-paper links, 9 saved claims and 4 historical review
+observations. Coverage includes all 1870 IDs; the other 1861 are outside this
+scientific review, not newly certified correct. The v3f snapshot stays at
+1469 kept / 401 dropped, with zero database updates.
+
+The source review proposes no restoration from the cited claims for CD45,
+CD20, cytochrome c, CLB3 and PSA. MGP and SIRT3 need a separate role assessment;
+TIA1 needs entity/taxon separation. These are proposals about individual
+protein-paper attributions, not a new global rule for `model_only`. Accepted
+IDE/SIRT1/YAP1 interpretations remain unchanged.
+
+On 2026-11-17 the curator accepted **eIF3a (1399) as a stress-granule component,
+not as an aggregating protein**. A modulatory role is possible but unresolved.
+Do not assign an aggregator label, a confirmed modifier role or a modifier
+subtype from this decision. Do not translate the absence of an aggregator
+assignment into an experimental negative amyloid result. The source is
+PMID 23437357; its figure correction, PMID 26914026, is retained in the review
+provenance. The authors replaced overlapping Fig. 1A images with replicates
+and report the same stress-granule result.
+
+The original packet and assessments are preserved. `packet-v2` under
+`data/reviews/amylodb-006/` carries one explicit curator decision, with its
+verbatim instruction and source, alongside eight undecided rows. No accession
+was guessed and no decision was applied to SQLite. Application requires a
+separate identity-checked condensate transition, rather than the aggregator
+restoration operation introduced in 005b.
+
+An independent-of-builder check validates all IDs, SQL fields, linked PMIDs,
+claims, historical marks and input/output hashes. Eight invalid-input controls
+reject duplicate/missing IDs, an unlinked PMID, a missing positive vote, a stale
+snapshot, an invented curator decision, and promotion of eIF3a to either an
+aggregator or a confirmed modifier. All eight refusals pass; v3f retains
+SHA-256 `49ee95a24ee40f9938aac98d1a6104577e5b04c5861eaff9c0362ee36244fd4b`.
+This is self-verification by the implementing agent, not a second scientific
+reviewer. No full build, model inference, mass retrieval or selection-rule
+change is included.

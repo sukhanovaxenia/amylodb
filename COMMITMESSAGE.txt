@@ -1,13 +1,15 @@
-Merge codex/amylodb-005b-fix: protect curator outputs, normalise decision IDs
+docs: record eIF3a as a condensate component without an aggregator label
 
-Reviewer fix 0a8f8d8 for stage amylodb-005b (verdict FIX-READY):
-- --report can no longer overwrite the input or output database: the
-  report is written inside apply() before publication, an existing path,
-  the output path or a path inside the UniProt cache is refused, and a
-  failed report publication removes this run's database link;
-- decision IDs are normalised to positive integers before the duplicate
-  check, so 1 and 01 no longer pass as two decisions;
-- staging files come from mkstemp; the source hash is rechecked before
-  publication;
-- docs: the export comparison changes 8 existing accessions in the
-  decision fields and 12 in all fields (co_mentioned_aggregators).
+Record the curator's decision for mining row 1399: stress-granule
+membership is accepted, an aggregator assignment is excluded, and a
+possible modulatory role remains unresolved without a modifier subtype.
+This is a record-specific annotation, not an experimental negative
+amyloid result or a new global selection rule.
+
+The nine-row NLI review packet retains eight undecided rows and one
+explicit curator decision with its source. All eight invalid-input
+controls pass, including promotion of eIF3a to an aggregator or a confirmed
+modifier. A fresh packet is byte-identical; all 348 tests pass.
+
+Document the review and its limits in README and changes_from_source 9.18.
+No SQLite, data sheets, model outputs or selection code are changed.

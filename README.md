@@ -120,6 +120,13 @@ text > model_only > curator review of an LCR > unresolved — and every row's
 decision, with its PMIDs and region or construct scope, is kept in
 `evidence_items`.
 
+For eIF3a (mining row 1399), the curator's decision of 2026-11-17 accepts
+stress-granule membership as a condensate-component annotation, **not an
+aggregator assignment**. A possible modulatory role remains unresolved; no
+modifier subtype or confirmed modifier assignment follows from membership.
+This record-specific decision does not establish experimental non-amyloidicity
+or introduce a general selection rule (section 9.18).
+
 See `docs/running.md` for setup, model download (`scripts/fetch_models.py`),
 model validation (`scripts/check_models.py`), mining and the quality audit
 (`scripts/audit_mining.py`); `docs/mining.md` for how claims become fields; and
