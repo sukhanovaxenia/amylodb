@@ -1102,3 +1102,24 @@ revalidated database SHA-256 stayed
 the corpus stores plain text rather than the original XML, this compatibility
 check cannot count historical truncations; recovery of old records is not part
 of this fix. No database, mining output, model, or selection rule changed.
+
+
+## 9.20 Curator provenance in side lists (amylodb-008a)
+
+Following curator approval, `modifiers.tsv` and `condensate_candidates.tsv`
+append a thirteenth column, `evidence_items`. It contains a JSON array carrying
+curator decisions, supporting PMIDs and scope notes from the mined input.
+Missing, null or empty evidence lists serialize as `[]`. JSON strings preserve
+Unicode, tabs and newlines; consumers should parse TSV with a CSV reader and
+then decode the JSON cell. The first twelve columns retain their order and
+values. This replaces the side-list provenance omission described in 005a.
+
+The old and new writers were compared on all 1,469 v3f export rows: all twelve
+previous fields matched for all 372 modifier rows and 867 condensate rows.
+These overlapping lists contain 6 and 4 rows with curator decisions, respectively;
+every serialized evidence list equals its input. All output rows have 13 columns.
+Seven regression controls cover both output routes, missing/null/empty evidence,
+Unicode and escaped text, and alias decisions retained in both input orders.
+All seven fail on the old writer; the updated suite passes all 365 tests.
+The database and mined input hashes are unchanged. This stage changes the output
+format only; applying the eIF3a decision to SQLite remains a separate step.

@@ -144,11 +144,13 @@ def _write_modifiers_tsv(modifiers: List[Dict], path: str) -> None:
     ``condensate_evidence`` marks a condensate term beside the protein;
     ``condensate_role`` is "regulator" for candidates that reached the list
     through regulator votes only, "component" for the other condensate rows.
+    ``evidence_items`` is a JSON array preserving curator decisions and scope;
+    records without decisions carry an empty array.
     """
     import csv
     cols = ["protein_name", "primary_role", "modifier_roles", "condensate_evidence", "condensate_role", "uniprot_id",
             "gene_name", "organism", "uniprot_name", "co_mentioned_aggregators",
-            "disassembly_cofactors", "source_pmids"]
+            "disassembly_cofactors", "source_pmids", "evidence_items"]
     with open(path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, delimiter="\t")
         w.writerow(cols)
@@ -165,7 +167,8 @@ def _write_modifiers_tsv(modifiers: List[Dict], path: str) -> None:
                         m.get("organism", ""), m.get("uniprot_name", ""),
                         ";".join(m.get("co_mentioned_aggregators", []) or []),
                         ";".join(m.get("disassembly_cofactors", []) or []),
-                        ";".join(m.get("source_pmids", []) or [])])
+                        ";".join(m.get("source_pmids", []) or []),
+                        json.dumps(m.get("evidence_items") or [], sort_keys=True, ensure_ascii=False)])
     logger.info("Wrote %d rows to %s", len(modifiers), path)
 
 

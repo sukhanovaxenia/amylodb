@@ -1,3 +1,6 @@
-fix: preserve nested text in PubMed XML records
+feat: preserve curator evidence in side-list TSV exports
 
-Join descendant text in article titles and abstract sections so inline tags do not truncate content. Add offline regression coverage and document the corpus compatibility check.
+Append evidence_items as JSON to modifier and condensate exports.
+Preserve the original twelve columns and serialize missing decisions as [].
+Verify both routes and alias decisions with seven regression controls.
+All 365 tests pass; compare every side-list row from the v3f export.

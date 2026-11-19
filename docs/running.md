@@ -423,3 +423,14 @@ Before a long mining run, check the PubMed query and counts without extraction:
 ```bash
 python -m amylodb.mining.pipeline --email you@example.com --dry-run --max-papers 20
 ```
+
+
+### Curator provenance in side-list TSV files
+
+`modifiers.tsv` and `condensate_candidates.tsv` append `evidence_items` after
+`source_pmids` (13 columns total). Read by column name, then JSON-decode this
+cell: it is an array of curator decision objects, or `[]` when none were
+provided. The objects preserve supporting PMIDs, source row IDs, scope notes
+and decision provenance. This field does not change a protein's assigned role.
+Existing output files are not rewritten automatically; regenerate the side lists
+with the updated exporter when needed.
